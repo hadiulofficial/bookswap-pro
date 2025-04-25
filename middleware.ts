@@ -15,7 +15,6 @@ export async function middleware(req: NextRequest) {
   // If no session and trying to access dashboard routes, redirect to login
   if (!session && req.nextUrl.pathname.startsWith("/dashboard")) {
     const redirectUrl = new URL("/login", req.url)
-    redirectUrl.searchParams.set("redirectTo", req.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
   }
 
