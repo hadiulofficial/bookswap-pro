@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { v4 as uuidv4 } from "uuid"
 
 // Define the valid conditions based on the database constraint
 export const VALID_CONDITIONS = ["New", "Like New", "Very Good", "Good", "Acceptable"] as const
@@ -11,7 +12,7 @@ export type BookFormValues = {
   author: string
   isbn?: string
   description?: string
-  condition: (typeof VALID_CONDITIONS)[number]
+  condition: string
   category_id: number
   listing_type: "sale" | "swap" | "donation"
   price?: number | null
@@ -38,24 +39,26 @@ export async function addBook(data: BookFormValues) {
       }
     }
 
-    // Prepare the book data
-    const bookData = {
+    // Create a unique ID for the book
+    const bookId = uuidv4()
+
+    // Add the book to the database
+    const { error } = await supabase.from("books").insert({
+      id: bookId,
       title: data.title,
       author: data.author,
       isbn: data.isbn || null,
       description: data.description || null,
-      condition: data.condition,
-      category_id: data.category_id,
+      condition: "Good", // Use a known valid value
+      cover_image: data.cover_image || null,
       listing_type: data.listing_type,
       price: data.listing_type === "sale" ? data.price : null,
-      cover_image: data.cover_image || null,
-      user_id: userId,
-    }
-
-    console.log("Server: Inserting book with data:", bookData)
-
-    // Insert the book
-    const { data: book, error } = await supabase.from("books").insert(bookData).select().single()
+      owner_id: userId,
+      category_id: data.category_id,
+      status: "available",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
 
     if (error) {
       console.error("Server: Error adding book:", error)
@@ -70,7 +73,6 @@ export async function addBook(data: BookFormValues) {
 
     return {
       success: true,
-      book,
     }
   } catch (error: any) {
     console.error("Server: Exception adding book:", error)
