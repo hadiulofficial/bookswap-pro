@@ -1,21 +1,72 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { DashboardTitle } from "@/components/dashboard/title"
+import { Loader2, Plus } from "lucide-react"
+import { supabase } from "@/lib/supabase/client"
 
-export const dynamic = "force-dynamic"
+export default function BooksPage() {
+  const { user, isLoading } = useAuth()
+  const router = useRouter()
+  const [books, setBooks] = useState<any[]>([])
+  const [loadingBooks, setLoadingBooks] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-export default async function BooksPage() {
-  const supabase = createServerComponentClient({ cookies })
+  useEffect(() => {
+    // If not loading and no user, redirect to login
+    if (!isLoading && !user) {
+      router.push("/login")
+      return
+    }
 
-  // Get the current session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    // Only fetch books if we have a user
+    if (user) {
+      fetchBooks()
+    }
+  }, [user, isLoading, router])
 
-  if (!session) {
+  const fetchBooks = async () => {
+    try {
+      setLoadingBooks(true)
+      setError(null)
+
+      const { data, error } = await supabase
+        .from("books")
+        .select("*")
+        .eq("owner_id", user?.id)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      setBooks(data || [])
+    } catch (err: any) {
+      console.error("Error fetching books:", err)
+      setError(err.message || "Failed to load books")
+    } finally {
+      setLoadingBooks(false)
+    }
+  }
+
+  // Show loading state
+  if (isLoading || loadingBooks) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-4" />
+        <p className="text-gray-500">Loading your books...</p>
+      </div>
+    )
+  }
+
+  // This should not happen since we redirect in useEffect, but just in case
+  if (!user) {
     return (
       <div className="container mx-auto py-8">
         <div className="text-center">
@@ -28,46 +79,26 @@ export default async function BooksPage() {
     )
   }
 
-  // Get the user's books
-  const { data: books, error } = await supabase
-    .from("books")
-    .select("*")
-    .eq("owner_id", session.user.id)
-    .order("created_at", { ascending: false })
-
-  if (error) {
-    console.error("Error fetching books:", error)
-    return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Error fetching books</h1>
-          <p className="text-red-500">{error.message}</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">My Books</h1>
-        <div className="flex gap-2">
-          <Link href="/dashboard/books/new">
-            <Button variant="outline">Add Book (Original)</Button>
-          </Link>
-          <Link href="/dashboard/books/add-fixed">
-            <Button>Add Book (Fixed)</Button>
-          </Link>
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <DashboardTitle title="My Books" description="Manage your book listings" />
+        <Button onClick={() => router.push("/dashboard/books/add-fixed")}>
+          <Plus className="mr-2 h-4 w-4" /> Add Book
+        </Button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-500 p-4 rounded-md mb-4">
+          <p>{error}</p>
+        </div>
+      )}
 
       {books.length === 0 ? (
-        <div className="text-center py-12">
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
           <h2 className="text-xl font-medium mb-2">You haven't added any books yet</h2>
           <p className="text-gray-500 mb-4">Add your first book to start exchanging with others</p>
-          <Link href="/dashboard/books/add-fixed">
-            <Button>Add Your First Book</Button>
-          </Link>
+          <Button onClick={() => router.push("/dashboard/books/add-fixed")}>Add Your First Book</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

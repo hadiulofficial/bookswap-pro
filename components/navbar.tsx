@@ -36,6 +36,7 @@ export function Navbar() {
     signOut()
   }
 
+  // Update the navLinks array to include the books page
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/books", label: "Browse Books" },
