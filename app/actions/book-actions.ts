@@ -45,8 +45,12 @@ export async function addBook(formData: BookFormValues) {
     } = await supabase.auth.getUser()
 
     if (!user) {
+      console.error("Authentication error: No user found in session")
       return { success: false, error: "You must be logged in to add a book" }
     }
+
+    // Log the user ID to help with debugging
+    console.log("User authenticated with ID:", user.id)
 
     // Add the book to the database
     const { error } = await supabase.from("books").insert({

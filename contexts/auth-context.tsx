@@ -75,11 +75,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: { session },
         } = await supabase.auth.getSession()
 
+        console.log("Auth context: Session fetched", !!session)
+
         setSession(session)
         setUser(session?.user || null)
 
         if (session?.user) {
           await fetchProfile(session.user.id)
+        } else {
+          setProfile(null)
+          console.log("Auth context: No user in session")
         }
 
         setIsLoading(false)

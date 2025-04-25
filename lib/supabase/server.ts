@@ -7,8 +7,12 @@ export function createServerClient(cookieStore: ReturnType<typeof cookies>) {
   return createServerComponentClient<Database>({ cookies: () => cookieStore })
 }
 
-// Add the missing export that's being referenced elsewhere
+// Update the createServerSupabaseClient function to be more robust
+
 export function createServerSupabaseClient() {
-  const cookies = nextCookies()
-  return createServerComponentClient<Database>({ cookies })
+  const cookieStore = nextCookies()
+  const supabase = createServerComponentClient<Database>({
+    cookies: () => cookieStore,
+  })
+  return supabase
 }
