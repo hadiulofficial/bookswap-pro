@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -8,11 +8,20 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { supabase } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
+  const { user } = useAuth()
+
+  // If user is already logged in, redirect to dashboard
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard")
+    }
+  }, [user, router])
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
