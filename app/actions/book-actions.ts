@@ -17,7 +17,7 @@ export type BookFormValues = {
   listing_type: "sale" | "swap" | "donation"
   price?: number | null
   cover_image?: string
-  user_id?: string
+  user_id: string
 }
 
 export async function addBook(data: BookFormValues) {
@@ -39,6 +39,34 @@ export async function addBook(data: BookFormValues) {
       }
     }
 
+    // Check if user has a profile
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .single()
+
+    if (profileError) {
+      console.error("Profile error:", profileError)
+
+      // Try to create a profile automatically
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: userId,
+        username: `user_${Math.floor(Math.random() * 1000000)}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+
+      if (insertError) {
+        console.error("Error creating profile:", insertError)
+        return {
+          success: false,
+          error: "Please create your profile before adding books",
+          needsProfile: true,
+        }
+      }
+    }
+
     // Create a unique ID for the book
     const bookId = uuidv4()
 
@@ -49,7 +77,7 @@ export async function addBook(data: BookFormValues) {
       author: data.author,
       isbn: data.isbn || null,
       description: data.description || null,
-      condition: "Good", // Use a known valid value
+      condition: data.condition,
       cover_image: data.cover_image || null,
       listing_type: data.listing_type,
       price: data.listing_type === "sale" ? data.price : null,
