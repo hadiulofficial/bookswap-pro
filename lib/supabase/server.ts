@@ -1,18 +1,37 @@
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import type { cookies } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
+import { cookies } from "next/headers"
 import type { Database } from "./database.types"
-import { cookies as nextCookies } from "next/headers"
 
+// Function for use in server components
 export function createServerClient(cookieStore: ReturnType<typeof cookies>) {
   return createServerComponentClient<Database>({ cookies: () => cookieStore })
 }
 
-// Update the createServerSupabaseClient function to be more robust
-
+// Enhanced function for server actions
 export function createServerSupabaseClient() {
-  const cookieStore = nextCookies()
-  const supabase = createServerComponentClient<Database>({
-    cookies: () => cookieStore,
-  })
-  return supabase
+  try {
+    const cookieStore = cookies()
+
+    // Log the available cookies for debugging
+    console.log(
+      "Available cookies:",
+      [...cookieStore.getAll()].map((c) => c.name),
+    )
+
+    const supabase = createServerComponentClient<Database>({
+      cookies: () => cookieStore,
+    })
+
+    return supabase
+  } catch (error) {
+    console.error("Error creating server Supabase client:", error)
+
+    // Fallback to direct client creation if cookie access fails
+    return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: {
+        persistSession: false,
+      },
+    })
+  }
 }

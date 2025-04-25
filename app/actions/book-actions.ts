@@ -28,6 +28,8 @@ export type BookFormValues = z.infer<typeof bookFormSchema>
 
 export async function addBook(formData: BookFormValues) {
   try {
+    console.log("Starting addBook server action")
+
     // Validate form data
     const validatedData = bookFormSchema.parse(formData)
 
@@ -38,9 +40,31 @@ export async function addBook(formData: BookFormValues) {
 
     // Get the current user using the improved server client
     const supabase = createServerSupabaseClient()
+
+    // Check if we have a valid session first
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      console.error("Session error:", sessionError)
+      return { success: false, error: "Authentication error: " + sessionError.message }
+    }
+
+    console.log("Session check:", sessionData?.session ? "Valid session" : "No session")
+
+    if (!sessionData?.session) {
+      return { success: false, error: "No active session found. Please log in again." }
+    }
+
+    // Now get the user
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error("User error:", userError)
+      return { success: false, error: "Authentication error: " + userError.message }
+    }
 
     if (!user) {
       console.error("Authentication error: No user found in session")
@@ -78,9 +102,13 @@ export async function addBook(formData: BookFormValues) {
       }
     }
 
+    // Create a unique ID for the book
+    const bookId = uuidv4()
+    console.log("Generated book ID:", bookId)
+
     // Add the book to the database
     const { error } = await supabase.from("books").insert({
-      id: uuidv4(),
+      id: bookId,
       title: validatedData.title,
       author: validatedData.author,
       isbn: validatedData.isbn || null,
@@ -100,6 +128,8 @@ export async function addBook(formData: BookFormValues) {
       console.error("Error adding book:", error)
       return { success: false, error: error.message }
     }
+
+    console.log("Book added successfully with ID:", bookId)
 
     // Revalidate the books page to show the new book
     revalidatePath("/dashboard/books")

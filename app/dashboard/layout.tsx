@@ -3,6 +3,7 @@ import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardHeader } from "@/components/dashboard/header"
 import { DebugAuth } from "@/components/debug-auth"
 import { CreateProfileButton } from "@/components/create-profile-button"
+import { DebugAuthStatus } from "@/components/debug-auth-status"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,6 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
       <CreateProfileButton />
       <DebugAuth />
+      <DebugAuthStatus />
     </div>
   )
 }
