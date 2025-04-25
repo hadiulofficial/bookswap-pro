@@ -51,7 +51,7 @@ export default function NewBookPage() {
           title,
           author,
           condition: "Good",
-          listing_type: "swap",
+          listing_type: "exchange", // Changed from "swap" to "exchange"
           owner_id: user.id,
           category_id: 1, // Default category
         }),
