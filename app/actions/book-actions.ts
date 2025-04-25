@@ -11,7 +11,8 @@ const bookFormSchema = z.object({
   author: z.string().min(1, "Author is required"),
   isbn: z.string().optional(),
   description: z.string().optional(),
-  condition: z.enum(["new", "like-new", "very-good", "good", "fair", "poor"], {
+  // Update the condition enum to match database constraints
+  condition: z.enum(["new", "like_new", "very_good", "good", "fair", "poor"], {
     required_error: "Please select a condition",
   }),
   category_id: z.coerce.number({
@@ -31,6 +32,7 @@ export type BookFormValues = z.infer<typeof bookFormSchema>
 export async function addBook(formData: BookFormValues) {
   try {
     console.log("Starting addBook server action")
+    console.log("Form data received:", formData)
 
     // Validate form data
     const validatedData = bookFormSchema.parse(formData)

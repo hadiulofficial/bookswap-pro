@@ -26,7 +26,8 @@ const bookFormSchema = z.object({
   author: z.string().min(1, "Author is required"),
   isbn: z.string().optional(),
   description: z.string().optional(),
-  condition: z.enum(["new", "like-new", "very-good", "good", "fair", "poor"], {
+  // Update the condition enum to match database constraints
+  condition: z.enum(["new", "like_new", "very_good", "good", "fair", "poor"], {
     required_error: "Please select a condition",
   }),
   category_id: z.coerce.number({
@@ -67,7 +68,7 @@ export default function NewBookPage() {
       author: "",
       isbn: "",
       description: "",
-      condition: "good",
+      condition: "good", // This is a valid value in the database
       category_id: undefined,
       listing_type: "swap",
       price: null,
@@ -106,6 +107,7 @@ export default function NewBookPage() {
     setError(null)
 
     try {
+      console.log("Submitting book data:", data)
       const result = await addBook(data)
 
       if (!result.success) {
@@ -179,9 +181,6 @@ export default function NewBookPage() {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-
-                {/* Rest of the form remains the same */}
-                {/* ... */}
 
                 <TabsContent value="details" className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -266,9 +265,10 @@ export default function NewBookPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
+                              {/* Update the values to match database constraints */}
                               <SelectItem value="new">New</SelectItem>
-                              <SelectItem value="like-new">Like New</SelectItem>
-                              <SelectItem value="very-good">Very Good</SelectItem>
+                              <SelectItem value="like_new">Like New</SelectItem>
+                              <SelectItem value="very_good">Very Good</SelectItem>
                               <SelectItem value="good">Good</SelectItem>
                               <SelectItem value="fair">Fair</SelectItem>
                               <SelectItem value="poor">Poor</SelectItem>
