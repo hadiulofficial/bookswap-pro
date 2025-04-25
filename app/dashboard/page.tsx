@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,25 +13,37 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 export default function DashboardPage() {
   const { user, profile, isLoading } = useAuth()
   const router = useRouter()
+  const [isPageLoaded, setIsPageLoaded] = useState(false)
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login")
     }
+
+    // Force page to render after a short delay even if profile is not loaded
+    const timer = setTimeout(() => {
+      setIsPageLoaded(true)
+    }, 1000)
+
+    return () => clearTimeout(timer)
   }, [user, isLoading, router])
 
-  if (isLoading || !user || !profile) {
+  // Show loading state only if auth is still loading and page hasn't been force-loaded
+  if ((isLoading || !user) && !isPageLoaded) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center h-[calc(100vh-64px)]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
       </div>
     )
   }
 
+  // Get user display name safely
+  const displayName = profile?.full_name || profile?.username || user?.email?.split("@")[0] || "User"
+
   return (
     <div className="space-y-8">
       <DashboardTitle
-        title={`Welcome back, ${profile.full_name || profile.username || user.email?.split("@")[0] || "User"}!`}
+        title={`Welcome back, ${displayName}!`}
         description="Here's an overview of your BookSwap activity"
       />
 
