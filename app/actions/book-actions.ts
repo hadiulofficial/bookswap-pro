@@ -1,139 +1,102 @@
 "use server"
 
-import { z } from "zod"
-import { v4 as uuidv4 } from "uuid"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { v4 as uuidv4 } from "uuid"
 
 // Define the valid conditions based on the database constraint
 export const VALID_CONDITIONS = ["New", "Like New", "Very Good", "Good", "Acceptable"] as const
 
-// Define the form schema with Zod
-const bookFormSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  author: z.string().min(1, "Author is required"),
-  isbn: z.string().optional(),
-  description: z.string().optional(),
-  // Use string type for condition to avoid type issues
-  condition: z.string(),
-  category_id: z.coerce.number({
-    required_error: "Please select a category",
-  }),
-  listing_type: z.enum(["sale", "swap", "donation"], {
-    required_error: "Please select a listing type",
-  }),
-  price: z.coerce.number().min(0, "Price must be a positive number").optional().nullable(),
-  cover_image: z.string().optional(),
-  user_id: z.string().min(1, "User ID is required"),
-})
+export type BookFormValues = {
+  title: string
+  author: string
+  isbn?: string
+  description?: string
+  condition: string
+  category_id: number
+  listing_type: "sale" | "swap" | "donation"
+  price?: number | null
+  cover_image?: string
+  user_id?: string
+}
 
-export type BookFormValues = z.infer<typeof bookFormSchema>
-
-export async function addBook(formData: BookFormValues) {
+export async function addBook(data: BookFormValues) {
   try {
-    console.log("Starting addBook server action")
-    console.log("Form data received:", formData)
+    console.log("Server: Adding book with data:", data)
 
-    // Validate form data
-    const validatedData = bookFormSchema.parse(formData)
-
-    // If listing type is not sale, ensure price is null
-    if (validatedData.listing_type !== "sale") {
-      validatedData.price = null
-    }
-
-    // Get the user ID from the form data
-    const userId = validatedData.user_id
-
-    if (!userId) {
-      console.error("No user ID provided")
-      return { success: false, error: "You must be logged in to add a book" }
-    }
-
-    console.log("Using user ID from form data:", userId)
-
-    // Get the Supabase admin client
+    // Create Supabase client with service role
     const supabase = createServerSupabaseClient()
 
-    // Check if user has a profile
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .single()
+    // If user_id is provided from client, use it
+    // This is a workaround for the session cookie issue
+    const userId = data.user_id
 
-    if (profileError) {
-      console.error("Profile error:", profileError)
-
-      // Try to create a profile automatically
-      const { error: insertError } = await supabase.from("profiles").insert({
-        id: userId,
-        username: `user_${Math.floor(Math.random() * 1000000)}`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-
-      if (insertError) {
-        console.error("Error creating profile:", insertError)
-        return {
-          success: false,
-          error: "Please create your profile before adding books",
-          needsProfile: true,
-        }
+    if (!userId) {
+      console.error("Server: No user ID provided")
+      return {
+        success: false,
+        error: "You must be logged in to add a book",
       }
     }
 
     // Create a unique ID for the book
     const bookId = uuidv4()
-    console.log("Generated book ID:", bookId)
 
     // Add the book to the database
     const { error } = await supabase.from("books").insert({
       id: bookId,
-      title: validatedData.title,
-      author: validatedData.author,
-      isbn: validatedData.isbn || null,
-      description: validatedData.description || null,
+      title: data.title,
+      author: data.author,
+      isbn: data.isbn || null,
+      description: data.description || null,
       condition: "Good", // Use a known valid value
-      cover_image: validatedData.cover_image || null,
-      listing_type: validatedData.listing_type,
-      price: validatedData.price,
+      cover_image: data.cover_image || null,
+      listing_type: data.listing_type,
+      price: data.listing_type === "sale" ? data.price : null,
       owner_id: userId,
-      category_id: validatedData.category_id,
+      category_id: data.category_id,
       status: "available",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
 
     if (error) {
-      console.error("Error adding book:", error)
-      return { success: false, error: error.message }
+      console.error("Server: Error adding book:", error)
+      return {
+        success: false,
+        error: error.message,
+      }
     }
 
-    console.log("Book added successfully with ID:", bookId)
-
-    // Revalidate the books page to show the new book
+    // Revalidate the books page
     revalidatePath("/dashboard/books")
 
-    return { success: true }
+    return {
+      success: true,
+    }
   } catch (error: any) {
-    console.error("Error in addBook action:", error)
+    console.error("Server: Exception adding book:", error)
     return {
       success: false,
-      error: error.message || "Failed to add book. Please try again.",
+      error: error.message || "An unexpected error occurred",
     }
   }
 }
 
 export async function getCategories() {
-  const supabase = createServerSupabaseClient()
+  try {
+    const supabase = createServerSupabaseClient()
 
-  const { data, error } = await supabase.from("categories").select("id, name").order("name")
+    const { data, error } = await supabase.from("categories").select("id, name").order("name")
 
-  if (error) {
-    console.error("Error fetching categories:", error)
+    if (error) {
+      console.error("Error fetching categories:", error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error("Exception fetching categories:", error)
     return []
   }
-
-  return data || []
 }
