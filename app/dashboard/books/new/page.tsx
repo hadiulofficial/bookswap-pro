@@ -2,163 +2,158 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/contexts/auth-context"
-import { DashboardTitle } from "@/components/dashboard/title"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, BookPlus, Loader2 } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/contexts/auth-context"
+import { DebugAuth } from "@/components/debug-auth"
 
-export default function NewBookPage() {
-  const { user } = useAuth()
+export default function AddBook() {
   const router = useRouter()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { user, session } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [isClient, setIsClient] = useState(false)
 
-  // Minimal form state
-  const [title, setTitle] = useState("")
-  const [author, setAuthor] = useState("")
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-
-    if (!user) {
-      setError("You must be logged in to add a book")
-      return
-    }
-
-    if (!title || !author) {
-      setError("Title and author are required")
-      return
-    }
-
-    setIsSubmitting(true)
+    setIsLoading(true)
     setError(null)
 
+    if (!user || !session) {
+      setError("You must be logged in to add a book")
+      setIsLoading(false)
+      return
+    }
+
+    const formData = new FormData(e.currentTarget)
+
+    // Important: Use correct capitalization for listing_type
+    // The values in the form match exactly what the database expects
+    const data = {
+      title: formData.get("title") as string,
+      author: formData.get("author") as string,
+      description: formData.get("description") as string,
+      condition: formData.get("condition") as string,
+      listingType: formData.get("listingType") as string, // This will be capitalized from the select
+    }
+
     try {
-      // Direct fetch to avoid any client-side issues
       const response = await fetch("/api/books/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          title,
-          author,
-          condition: "Good",
-          listing_type: "exchange", // Changed from "swap" to "exchange"
-          owner_id: user.id,
-          category_id: 1, // Default category
-        }),
+        body: JSON.stringify(data),
       })
 
+      const result = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to add book")
+        throw new Error(result.error || "Failed to add book")
       }
 
       setSuccess(true)
+      // Redirect to books page after 1 second
       setTimeout(() => {
         router.push("/dashboard/books")
-      }, 2000)
-    } catch (err: any) {
-      console.error("Error adding book:", err)
-      setError(err.message || "Failed to add book. Please try again.")
+        router.refresh()
+      }, 1000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred")
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false)
     }
   }
 
-  // If not logged in, show error
-  if (!user) {
-    return (
-      <div className="space-y-6">
-        <DashboardTitle title="Add New Book" description="List a book for sale, swap, or donation" />
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>You must be logged in to add a book</AlertDescription>
-        </Alert>
-        <Button variant="outline" onClick={() => router.push("/login")}>
-          Go to Login
-        </Button>
-      </div>
-    )
+  if (!isClient) {
+    return <div>Loading...</div>
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <DashboardTitle title="Add New Book" description="List a book for sale, swap, or donation" />
-        <Button variant="outline" onClick={() => router.push("/dashboard/books")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Books
-        </Button>
-      </div>
+    <div className="container mx-auto py-8">
+      <Card className="max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="text-2xl">Add New Book</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {error && <div className="bg-red-50 text-red-500 p-3 rounded-md mb-4">{error}</div>}
 
-      {success ? (
-        <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-900">
-          <BookPlus className="h-4 w-4 text-emerald-600" />
-          <AlertDescription className="text-emerald-700 dark:text-emerald-300">
-            Book added successfully! Redirecting to your book collection...
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <Card>
-          <CardContent className="pt-6">
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+          {success && (
+            <div className="bg-green-50 text-green-500 p-3 rounded-md mb-4">
+              Book added successfully! Redirecting...
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Book Title*</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter the book title"
-                    required
-                  />
-                </div>
+          {!user && (
+            <div className="bg-amber-50 text-amber-600 p-3 rounded-md mb-4">You must be logged in to add a book</div>
+          )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="author">Author*</Label>
-                  <Input
-                    id="author"
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    placeholder="Enter the author's name"
-                    required
-                  />
-                </div>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title *</Label>
+              <Input id="title" name="title" required />
+            </div>
 
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding Book...
-                    </>
-                  ) : (
-                    <>
-                      <BookPlus className="mr-2 h-4 w-4" /> Add Book
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            <div className="space-y-2">
+              <Label htmlFor="author">Author *</Label>
+              <Input id="author" name="author" required />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" name="description" rows={3} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="condition">Condition</Label>
+              <Select name="condition" defaultValue="Good">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select condition" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Like New">Like New</SelectItem>
+                  <SelectItem value="Very Good">Very Good</SelectItem>
+                  <SelectItem value="Good">Good</SelectItem>
+                  <SelectItem value="Acceptable">Acceptable</SelectItem>
+                  <SelectItem value="Poor">Poor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="listingType">Listing Type</Label>
+              <Select name="listingType" defaultValue="Exchange">
+                <SelectTrigger>
+                  <SelectValue placeholder="Select listing type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Important: Use correct capitalization that matches the database constraint */}
+                  <SelectItem value="Exchange">Exchange</SelectItem>
+                  <SelectItem value="Sell">Sell</SelectItem>
+                  <SelectItem value="Donate">Donate</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading || !user}>
+              {isLoading ? "Adding Book..." : "Add Book"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+      <DebugAuth />
     </div>
   )
 }

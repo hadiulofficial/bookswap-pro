@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
 import type { User, Session } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/database.types"
@@ -17,6 +17,7 @@ type AuthContextType = {
   isLoading: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
+  refreshSession: async () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -34,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const pathname = usePathname()
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -61,6 +64,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null
   }
 
+  const refreshSession = async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession()
+      if (error) {
+        console.error("Error refreshing session:", error)
+        return null
+      }
+
+      setSession(data.session)
+      setUser(data.session?.user || null)
+
+      if (data.session?.user) {
+        await fetchProfile(data.session.user.id)
+      }
+
+      return data.session
+    } catch (error) {
+      console.error("Exception refreshing session:", error)
+      return null
+    }
+  }
+
   useEffect(() => {
     const fetchSession = async () => {
       try {
@@ -78,6 +103,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setProfile(null)
           console.log("Auth context: No user in session")
+
+          // If on a dashboard page and no session, redirect to login
+          if (pathname?.startsWith("/dashboard")) {
+            router.push(`/login?redirectTo=${pathname}`)
+          }
         }
 
         setIsLoading(false)
@@ -99,6 +129,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await fetchProfile(session.user.id)
       } else {
         setProfile(null)
+
+        // If on a dashboard page and no session, redirect to login
+        if (pathname?.startsWith("/dashboard")) {
+          router.push(`/login?redirectTo=${pathname}`)
+        }
       }
 
       setIsLoading(false)
@@ -107,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [])
+  }, [pathname, router])
 
   const signOut = async () => {
     try {
@@ -127,7 +162,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, session, isLoading, signOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        session,
+        isLoading,
+        signOut,
+        refreshProfile,
+        refreshSession,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )
