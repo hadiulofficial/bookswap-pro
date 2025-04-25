@@ -375,23 +375,25 @@ export default function PublicBooksPage() {
 
       {/* Login CTA for non-authenticated users */}
       {!user && (
-        <div className="bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/20 dark:to-blue-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl p-6 shadow-sm mx-4 sm:mx-6 lg:mx-8 my-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-emerald-800 dark:text-emerald-300">
-                Want to swap, sell, or get books?
-              </h2>
-              <p className="text-emerald-700 dark:text-emerald-400">
-                Sign in to contact book owners and list your own books.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button asChild variant="outline">
-                <Link href="/login">Sign In</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/signup">Create Account</Link>
-              </Button>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-4">
+          <div className="bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/20 dark:to-blue-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl p-6 shadow-sm">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-emerald-800 dark:text-emerald-300">
+                  Want to swap, sell, or get books?
+                </h2>
+                <p className="text-emerald-700 dark:text-emerald-400">
+                  Sign in to contact book owners and list your own books.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button asChild variant="outline">
+                  <Link href="/login">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/signup">Create Account</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
