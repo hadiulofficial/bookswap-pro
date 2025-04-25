@@ -2,8 +2,7 @@
 
 import { z } from "zod"
 import { v4 as uuidv4 } from "uuid"
-import { cookies } from "next/headers"
-import { createServerClient } from "@/lib/supabase/server"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
 // Define the form schema with Zod
@@ -37,9 +36,8 @@ export async function addBook(formData: BookFormValues) {
       validatedData.price = null
     }
 
-    // Get the current user
-    const cookieStore = cookies()
-    const supabase = createServerClient(cookieStore)
+    // Get the current user using the improved server client
+    const supabase = createServerSupabaseClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -48,6 +46,9 @@ export async function addBook(formData: BookFormValues) {
       console.error("Authentication error: No user found in session")
       return { success: false, error: "You must be logged in to add a book" }
     }
+
+    // Log the user ID to help with debugging
+    console.log("User authenticated with ID:", user.id)
 
     // Check if user has a profile
     const { data: profile, error: profileError } = await supabase
@@ -76,9 +77,6 @@ export async function addBook(formData: BookFormValues) {
         }
       }
     }
-
-    // Log the user ID to help with debugging
-    console.log("User authenticated with ID:", user.id)
 
     // Add the book to the database
     const { error } = await supabase.from("books").insert({
@@ -117,8 +115,7 @@ export async function addBook(formData: BookFormValues) {
 }
 
 export async function getCategories() {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
+  const supabase = createServerSupabaseClient()
 
   const { data, error } = await supabase.from("categories").select("id, name").order("name")
 

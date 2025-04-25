@@ -1,11 +1,9 @@
 "use server"
 
-import { createServerClient } from "@/lib/supabase/server"
-import { cookies } from "next/headers"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 export async function getCategories() {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
+  const supabase = createServerSupabaseClient()
 
   const { data, error } = await supabase.from("categories").select("id, name").order("name")
 
