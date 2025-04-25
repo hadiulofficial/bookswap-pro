@@ -38,7 +38,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-       books: {
+      books: {
         Row: {
           id: string;
           title: string;
@@ -133,7 +133,7 @@ export interface Database {
       }
     }
     Enums: {
-      book_condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
