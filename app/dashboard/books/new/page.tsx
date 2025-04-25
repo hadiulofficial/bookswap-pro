@@ -27,7 +27,7 @@ const bookFormSchema = z.object({
   isbn: z.string().optional(),
   description: z.string().optional(),
   // Use the exact values from the database constraint
-  condition: z.enum(["New", "Like New", "Very Good", "Good", "Acceptable"], {
+  condition: z.enum(VALID_CONDITIONS, {
     required_error: "Please select a condition",
   }),
   category_id: z.coerce.number({

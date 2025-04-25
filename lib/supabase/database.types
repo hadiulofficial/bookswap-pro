@@ -45,11 +45,11 @@ export interface Database {
           author: string
           description: string | null
           isbn: string | null
-          condition: string
+          condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
           cover_image: string | null
           listing_type: string
           price: number | null
-          owner_id: string
+          user_id: string
           category_id: number | null
           status: string
           created_at: string
@@ -61,11 +61,11 @@ export interface Database {
           author: string
           description?: string | null
           isbn?: string | null
-          condition: string
+          condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
           cover_image?: string | null
           listing_type: string
           price?: number | null
-          owner_id: string
+          user_id: string
           category_id?: number | null
           status?: string
           created_at?: string
@@ -77,11 +77,11 @@ export interface Database {
           author?: string
           description?: string | null
           isbn?: string | null
-          condition?: string
+          condition?: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
           cover_image?: string | null
           listing_type?: string
           price?: number | null
-          owner_id?: string
+          user_id?: string
           category_id?: number | null
           status?: string
           created_at?: string
