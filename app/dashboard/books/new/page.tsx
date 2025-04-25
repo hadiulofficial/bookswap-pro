@@ -37,6 +37,7 @@ const bookFormSchema = z.object({
   }),
   price: z.coerce.number().min(0, "Price must be a positive number").optional().nullable(),
   cover_image: z.string().optional(),
+  user_id: z.string().optional(), // Add user_id field
 })
 
 export default function NewBookPage() {
@@ -71,8 +72,16 @@ export default function NewBookPage() {
       listing_type: "swap",
       price: null,
       cover_image: "",
+      user_id: "", // Initialize user_id as empty
     },
   })
+
+  // Set user_id when user is available
+  useEffect(() => {
+    if (user) {
+      form.setValue("user_id", user.id)
+    }
+  }, [user, form])
 
   // Watch the listing type to conditionally show price field
   const listingType = form.watch("listing_type")
@@ -89,6 +98,9 @@ export default function NewBookPage() {
       setError("You must be logged in to add a book")
       return
     }
+
+    // Ensure user_id is set
+    data.user_id = user.id
 
     setIsSubmitting(true)
     setError(null)
@@ -115,6 +127,22 @@ export default function NewBookPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // If not logged in, show error
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <DashboardTitle title="Add New Book" description="List a book for sale, swap, or donation" />
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>You must be logged in to add a book</AlertDescription>
+        </Alert>
+        <Button variant="outline" onClick={() => router.push("/login")}>
+          Go to Login
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -151,6 +179,9 @@ export default function NewBookPage() {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
+
+                {/* Rest of the form remains the same */}
+                {/* ... */}
 
                 <TabsContent value="details" className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

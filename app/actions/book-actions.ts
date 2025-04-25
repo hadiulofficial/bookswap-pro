@@ -22,6 +22,8 @@ const bookFormSchema = z.object({
   }),
   price: z.coerce.number().min(0, "Price must be a positive number").optional().nullable(),
   cover_image: z.string().optional(),
+  // Add user_id field to be passed from the client
+  user_id: z.string().min(1, "User ID is required"),
 })
 
 export type BookFormValues = z.infer<typeof bookFormSchema>
@@ -38,47 +40,24 @@ export async function addBook(formData: BookFormValues) {
       validatedData.price = null
     }
 
-    // Get the current user using the improved server client
-    const supabase = createServerSupabaseClient()
+    // Get the user ID from the form data
+    const userId = validatedData.user_id
 
-    // Check if we have a valid session first
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError) {
-      console.error("Session error:", sessionError)
-      return { success: false, error: "Authentication error: " + sessionError.message }
-    }
-
-    console.log("Session check:", sessionData?.session ? "Valid session" : "No session")
-
-    if (!sessionData?.session) {
-      return { success: false, error: "No active session found. Please log in again." }
-    }
-
-    // Now get the user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError) {
-      console.error("User error:", userError)
-      return { success: false, error: "Authentication error: " + userError.message }
-    }
-
-    if (!user) {
-      console.error("Authentication error: No user found in session")
+    if (!userId) {
+      console.error("No user ID provided")
       return { success: false, error: "You must be logged in to add a book" }
     }
 
-    // Log the user ID to help with debugging
-    console.log("User authenticated with ID:", user.id)
+    console.log("Using user ID from form data:", userId)
+
+    // Get the Supabase admin client
+    const supabase = createServerSupabaseClient()
 
     // Check if user has a profile
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("id")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single()
 
     if (profileError) {
@@ -86,7 +65,7 @@ export async function addBook(formData: BookFormValues) {
 
       // Try to create a profile automatically
       const { error: insertError } = await supabase.from("profiles").insert({
-        id: user.id,
+        id: userId,
         username: `user_${Math.floor(Math.random() * 1000000)}`,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -117,7 +96,7 @@ export async function addBook(formData: BookFormValues) {
       cover_image: validatedData.cover_image || null,
       listing_type: validatedData.listing_type,
       price: validatedData.price,
-      owner_id: user.id,
+      owner_id: userId,
       category_id: validatedData.category_id,
       status: "available",
       created_at: new Date().toISOString(),
