@@ -3,33 +3,16 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import {
-  BookOpen,
-  RefreshCw,
-  Users,
-  BookMarked,
-  ArrowUpRight,
-  BarChart3,
-  BookCopy,
-  Clock,
-  ArrowRight,
-  MessageSquare,
-  Star,
-  Plus,
-} from "lucide-react"
+import { BookOpen, RefreshCw, Users, BookMarked, User, ArrowUp, ArrowDown, Plus, MessageSquare } from "lucide-react"
 import { DashboardTitle } from "@/components/dashboard/title"
 import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useSidebarToggle } from "@/contexts/sidebar-context"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function DashboardPage() {
   const { user, profile, isLoading } = useAuth()
   const router = useRouter()
-  const { isOpen } = useSidebarToggle()
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -45,36 +28,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Demo data
-  const recentBooks = [
-    {
-      id: 1,
-      title: "The Great Gatsby",
-      author: "F. Scott Fitzgerald",
-      status: "Available",
-      cover: "/abstract-book-cover.png",
-    },
-    {
-      id: 2,
-      title: "To Kill a Mockingbird",
-      author: "Harper Lee",
-      status: "Swapped",
-      cover: "/mockingbird-silhouette.png",
-    },
-    { id: 3, title: "1984", author: "George Orwell", status: "Pending", cover: "/thought-police-eye.png" },
-  ]
-
-  const recentSwaps = [
-    {
-      id: 1,
-      user: "Sarah Johnson",
-      book: "Pride and Prejudice",
-      date: "2 days ago",
-      avatar: "/serene-gaze.png",
-    },
-    { id: 2, user: "Michael Chen", book: "The Hobbit", date: "1 week ago", avatar: "/thoughtful-gaze.png" },
-  ]
-
   return (
     <div className="space-y-8">
       <DashboardTitle
@@ -82,333 +35,288 @@ export default function DashboardPage() {
         description="Here's an overview of your BookSwap activity"
       />
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Books</CardTitle>
-            <div className="rounded-full bg-emerald-50 p-2 text-emerald-600">
-              <BookOpen className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <div className="flex items-center text-xs text-gray-500 mt-1">
-              <span className="flex items-center text-emerald-600 mr-1">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +2
-              </span>
-              since last month
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Swaps</CardTitle>
-            <div className="rounded-full bg-blue-50 p-2 text-blue-600">
-              <RefreshCw className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <div className="flex items-center text-xs text-gray-500 mt-1">
-              <span className="flex items-center text-blue-600 mr-1">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +1
-              </span>
-              since last week
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Profile Views</CardTitle>
-            <div className="rounded-full bg-purple-50 p-2 text-purple-600">
-              <Users className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">48</div>
-            <div className="flex items-center text-xs text-gray-500 mt-1">
-              <span className="flex items-center text-purple-600 mr-1">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +12
-              </span>
-              in the last 30 days
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Wishlist Items</CardTitle>
-            <div className="rounded-full bg-amber-50 p-2 text-amber-600">
-              <BookMarked className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">7</div>
-            <div className="flex items-center text-xs text-gray-500 mt-1">
-              <span className="flex items-center text-amber-600 mr-1">
-                <ArrowUpRight className="h-3 w-3 mr-1" />
-                +3
-              </span>
-              new additions
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
 
-      <div className="grid gap-4 md:grid-cols-7">
-        <Card className="md:col-span-4 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-l-4 border-l-emerald-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Books</CardTitle>
+                <div className="rounded-full bg-emerald-100 p-2 dark:bg-emerald-800/30">
+                  <BookOpen className="h-4 w-4 text-emerald-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">24</div>
+                <div className="flex items-center text-xs text-gray-500 mt-1">
+                  <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
+                  <span className="text-emerald-500 font-medium">12%</span>
+                  <span className="ml-1">from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Swaps</CardTitle>
+                <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-800/30">
+                  <RefreshCw className="h-4 w-4 text-blue-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">7</div>
+                <div className="flex items-center text-xs text-gray-500 mt-1">
+                  <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
+                  <span className="text-emerald-500 font-medium">18%</span>
+                  <span className="ml-1">from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Profile Views</CardTitle>
+                <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-800/30">
+                  <Users className="h-4 w-4 text-purple-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">142</div>
+                <div className="flex items-center text-xs text-gray-500 mt-1">
+                  <ArrowDown className="h-3 w-3 text-red-500 mr-1" />
+                  <span className="text-red-500 font-medium">4%</span>
+                  <span className="ml-1">from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-amber-500">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Wishlist Items</CardTitle>
+                <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-800/30">
+                  <BookMarked className="h-4 w-4 text-amber-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">16</div>
+                <div className="flex items-center text-xs text-gray-500 mt-1">
+                  <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
+                  <span className="text-emerald-500 font-medium">8%</span>
+                  <span className="ml-1">from last month</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="md:col-span-4">
+              <CardHeader>
                 <CardTitle>Book Activity</CardTitle>
                 <CardDescription>Your book listing activity over time</CardDescription>
-              </div>
-              <Tabs defaultValue="month">
-                <TabsList className="grid w-[200px] grid-cols-3">
-                  <TabsTrigger value="week">Week</TabsTrigger>
-                  <TabsTrigger value="month">Month</TabsTrigger>
-                  <TabsTrigger value="year">Year</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] relative">
-              {/* This would be a real chart in production */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <BarChart3 className="h-16 w-16 text-gray-200 mb-4" />
-                <div className="space-y-2 text-center">
-                  <h3 className="text-lg font-medium">Activity Visualization</h3>
-                  <p className="text-sm text-gray-500">Your book activity will be displayed here</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-3 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Your latest interactions</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recentSwaps.map((swap) => (
-              <div key={swap.id} className="flex items-start space-x-4">
-                <Avatar>
-                  <AvatarImage src={swap.avatar || "/placeholder.svg"} alt={swap.user} />
-                  <AvatarFallback>{swap.user.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">{swap.user}</p>
-                  <p className="text-sm text-gray-500">
-                    Requested to swap <span className="font-medium">{swap.book}</span>
-                  </p>
-                  <p className="text-xs text-gray-500">{swap.date}</p>
-                </div>
-                <div className="ml-auto flex space-x-2">
-                  <Button variant="outline" size="sm">
-                    Decline
-                  </Button>
-                  <Button size="sm">Accept</Button>
-                </div>
-              </div>
-            ))}
-
-            <div className="pt-2">
-              <Button variant="ghost" className="w-full justify-center" size="sm">
-                View All Activity
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <CardTitle>Book Statistics</CardTitle>
-            <CardDescription>Breakdown of your book listings</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center">
-                    <div className="mr-2 h-3 w-3 rounded-full bg-emerald-500"></div>
-                    <span>Available</span>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] flex flex-col">
+                  <div className="grid grid-cols-12 gap-2 mb-4">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <div key={i} className="flex flex-col items-center">
+                        <div
+                          className="w-full bg-emerald-100 dark:bg-emerald-800/30 rounded-t-sm"
+                          style={{
+                            height: `${Math.floor(Math.random() * 100) + 20}px`,
+                          }}
+                        ></div>
+                        <span className="text-xs text-gray-500 mt-1">{i + 1}</span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="font-medium">8 books</span>
-                </div>
-                <Progress value={67} className="h-2 bg-gray-100" indicatorClassName="bg-emerald-500" />
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center">
-                    <div className="mr-2 h-3 w-3 rounded-full bg-blue-500"></div>
-                    <span>Swapped</span>
-                  </div>
-                  <span className="font-medium">3 books</span>
-                </div>
-                <Progress value={25} className="h-2 bg-gray-100" indicatorClassName="bg-blue-500" />
-              </div>
+                  <div className="mt-auto space-y-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">Listing Completion</span>
+                        <span className="text-sm font-medium">78%</span>
+                      </div>
+                      <Progress value={78} className="h-2" />
+                    </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center">
-                    <div className="mr-2 h-3 w-3 rounded-full bg-amber-500"></div>
-                    <span>Pending</span>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">Swap Success Rate</span>
+                        <span className="text-sm font-medium">92%</span>
+                      </div>
+                      <Progress value={92} className="h-2" />
+                    </div>
                   </div>
-                  <span className="font-medium">1 book</span>
                 </div>
-                <Progress value={8} className="h-2 bg-gray-100" indicatorClassName="bg-amber-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card className="md:col-span-2 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Your Books</CardTitle>
-                <CardDescription>Recently added books in your collection</CardDescription>
-              </div>
-              <Button size="sm" onClick={() => router.push("/dashboard/books/new")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Book
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentBooks.map((book) => (
-                <div key={book.id} className="flex items-center space-x-4">
-                  <div className="h-20 w-14 overflow-hidden rounded-md shadow-sm">
-                    <img
-                      src={book.cover || "/placeholder.svg"}
-                      alt={book.title}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <h4 className="font-medium leading-none">{book.title}</h4>
-                    <p className="text-sm text-gray-500">{book.author}</p>
-                  </div>
-                  <Badge
-                    variant={
-                      book.status === "Available" ? "outline" : book.status === "Swapped" ? "secondary" : "default"
-                    }
-                    className={
-                      book.status === "Available"
-                        ? "text-emerald-600 bg-emerald-50"
-                        : book.status === "Swapped"
-                          ? "text-blue-600 bg-blue-50"
-                          : "text-amber-600 bg-amber-50"
-                    }
+            <Card className="md:col-span-3">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>Recent Activity</CardTitle>
+                  <CardDescription>Your latest interactions</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" className="text-xs">
+                  View all
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[
+                    {
+                      title: "New swap request",
+                      description: "Jane Smith wants to swap 'The Great Gatsby'",
+                      time: "2 hours ago",
+                      icon: <RefreshCw className="h-4 w-4 text-blue-500" />,
+                    },
+                    {
+                      title: "Book listed",
+                      description: "You listed 'To Kill a Mockingbird'",
+                      time: "Yesterday",
+                      icon: <BookOpen className="h-4 w-4 text-emerald-500" />,
+                    },
+                    {
+                      title: "New message",
+                      description: "Michael Brown sent you a message",
+                      time: "2 days ago",
+                      icon: <MessageSquare className="h-4 w-4 text-purple-500" />,
+                    },
+                    {
+                      title: "Swap completed",
+                      description: "Swap with Alex Johnson completed",
+                      time: "1 week ago",
+                      icon: <RefreshCw className="h-4 w-4 text-blue-500" />,
+                    },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="rounded-full bg-gray-100 p-2 dark:bg-gray-800">{item.icon}</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{item.title}</p>
+                        <p className="text-xs text-gray-500">{item.description}</p>
+                        <p className="text-xs text-gray-400 mt-1">{item.time}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>Book Statistics</CardTitle>
+                  <CardDescription>Breakdown of your book listings</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" className="text-xs">
+                  View all
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[
+                    { category: "Fiction", count: 12, color: "bg-emerald-500" },
+                    { category: "Non-Fiction", count: 5, color: "bg-blue-500" },
+                    { category: "Science Fiction", count: 3, color: "bg-purple-500" },
+                    { category: "Biography", count: 2, color: "bg-amber-500" },
+                    { category: "Other", count: 2, color: "bg-gray-500" },
+                  ].map((item, i) => (
+                    <div key={i} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">{item.category}</span>
+                        <span className="text-sm font-medium">{item.count}</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <div className={`h-full ${item.color}`} style={{ width: `${(item.count / 24) * 100}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>Quick Actions</CardTitle>
+                  <CardDescription>Common tasks you might want to perform</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Button
+                    variant="outline"
+                    className="flex flex-col h-24 items-center justify-center"
+                    onClick={() => router.push("/dashboard/books/new")}
                   >
-                    {book.status}
-                  </Badge>
+                    <Plus className="h-8 w-8 mb-2 text-emerald-500" />
+                    <span>Add Book</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex flex-col h-24 items-center justify-center"
+                    onClick={() => router.push("/dashboard/wishlist")}
+                  >
+                    <BookMarked className="h-8 w-8 mb-2 text-amber-500" />
+                    <span>Wishlist</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex flex-col h-24 items-center justify-center"
+                    onClick={() => router.push("/dashboard/messages")}
+                  >
+                    <MessageSquare className="h-8 w-8 mb-2 text-purple-500" />
+                    <span>Messages</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex flex-col h-24 items-center justify-center"
+                    onClick={() => router.push("/dashboard/profile")}
+                  >
+                    <User className="h-8 w-8 mb-2 text-blue-500" />
+                    <span>Profile</span>
+                  </Button>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter className="border-t pt-4">
-            <Button variant="ghost" className="w-full justify-center" size="sm">
-              View All Books
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BookCopy className="mr-2 h-5 w-5" />
-              Quick Add Book
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-emerald-100 mb-4">Add a new book to your collection in just a few clicks</p>
-            <Button
-              variant="secondary"
-              className="w-full bg-white text-emerald-700 hover:bg-emerald-50"
-              onClick={() => router.push("/dashboard/books/new")}
-            >
-              Add Book Now
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Messages</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">5</div>
-            <p className="text-xs text-gray-500">Unread messages</p>
-          </CardContent>
-          <CardFooter className="border-t pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-center"
-              onClick={() => router.push("/dashboard/messages")}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              View Messages
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Rating</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center">
-              <div className="text-2xl font-bold mr-2">4.8</div>
-              <div className="flex text-amber-500">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-current" />
-                ))}
+        <TabsContent value="analytics">
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics</CardTitle>
+              <CardDescription>Detailed statistics about your BookSwap activity</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">Analytics data will be available soon</p>
               </div>
-            </div>
-            <p className="text-xs text-gray-500">Based on 12 reviews</p>
-          </CardContent>
-          <CardFooter className="border-t pt-2">
-            <Button variant="ghost" size="sm" className="w-full justify-center">
-              View Reviews
-            </Button>
-          </CardFooter>
-        </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        <Card className="bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Swaps</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2</div>
-            <p className="text-xs text-gray-500">Scheduled this week</p>
-          </CardContent>
-          <CardFooter className="border-t pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-center"
-              onClick={() => router.push("/dashboard/swaps")}
-            >
-              <Clock className="mr-2 h-4 w-4" />
-              View Schedule
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+        <TabsContent value="activity">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Log</CardTitle>
+              <CardDescription>Your recent activity on BookSwap</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center h-64">
+                <p className="text-gray-500">Activity log will be available soon</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

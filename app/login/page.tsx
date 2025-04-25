@@ -30,7 +30,7 @@ export default function LoginPage() {
         throw error
       }
 
-      // No need to redirect here as Supabase will handle the redirect
+      // No need to redirect here as Supabase will handle the redirect to the callback URL
     } catch (error: any) {
       console.error("Login error:", error)
       setErrorMessage(error.message || "Failed to sign in with Google")

@@ -111,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Update the signOut function to redirect to the login page instead of home page
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -121,8 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear any local storage items related to auth
       localStorage.removeItem("supabase.auth.token")
 
-      // Redirect to home page after logout
-      router.push("/")
+      // Redirect to login page after logout
+      router.push("/login")
     } catch (error) {
       console.error("Error signing out:", error)
     }
