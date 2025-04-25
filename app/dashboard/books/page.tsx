@@ -1,139 +1,120 @@
-"use client"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DashboardTitle } from "@/components/dashboard/title"
-import { BookOpen, Plus, Search, Filter, SlidersHorizontal } from "lucide-react"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
-export default function BooksPage() {
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState("")
+export const dynamic = "force-dynamic"
 
-  // This would normally fetch from your database
-  const books = []
+export default async function BooksPage() {
+  const supabase = createServerComponentClient({ cookies })
+
+  // Get the current session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (!session) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">You must be logged in to view your books</h1>
+          <Link href="/login">
+            <Button>Log In</Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // Get the user's books
+  const { data: books, error } = await supabase
+    .from("books")
+    .select("*")
+    .eq("owner_id", session.user.id)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching books:", error)
+    return (
+      <div className="container mx-auto py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Error fetching books</h1>
+          <p className="text-red-500">{error.message}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <DashboardTitle title="My Books" description="Manage your book listings, sales, and exchanges" />
-        <Button onClick={() => router.push("/dashboard/books/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Book
-        </Button>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">My Books</h1>
+        <div className="flex gap-2">
+          <Link href="/dashboard/books/new">
+            <Button variant="outline">Add Book (Original)</Button>
+          </Link>
+          <Link href="/dashboard/books/add-fixed">
+            <Button>Add Book (Fixed)</Button>
+          </Link>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle>Book Collection</CardTitle>
-              <CardDescription>All your listed books in one place</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                <Input
-                  type="search"
-                  placeholder="Search books..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-                <span className="sr-only">Filter</span>
-              </Button>
-              <Button variant="outline" size="icon">
-                <SlidersHorizontal className="h-4 w-4" />
-                <span className="sr-only">Sort</span>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="all" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="all">All Books</TabsTrigger>
-              <TabsTrigger value="selling">For Sale</TabsTrigger>
-              <TabsTrigger value="swapping">For Swap</TabsTrigger>
-              <TabsTrigger value="donating">For Donation</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="all" className="space-y-4">
-              {books.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{/* Book cards would go here */}</div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="rounded-full bg-gray-100 p-4 dark:bg-gray-800 mb-4">
-                    <BookOpen className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">No books found</h3>
-                  <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                    You haven't added any books to your collection yet. Start by adding your first book.
-                  </p>
-                  <Button onClick={() => router.push("/dashboard/books/new")}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Your First Book
-                  </Button>
+      {books.length === 0 ? (
+        <div className="text-center py-12">
+          <h2 className="text-xl font-medium mb-2">You haven't added any books yet</h2>
+          <p className="text-gray-500 mb-4">Add your first book to start exchanging with others</p>
+          <Link href="/dashboard/books/add-fixed">
+            <Button>Add Your First Book</Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {books.map((book) => (
+            <Card key={book.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-xl">{book.title}</CardTitle>
+                  <Badge
+                    variant={
+                      book.listing_type === "Exchange"
+                        ? "default"
+                        : book.listing_type === "Sell"
+                          ? "secondary"
+                          : "outline"
+                    }
+                  >
+                    {book.listing_type}
+                  </Badge>
                 </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="selling" className="space-y-4">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-gray-100 p-4 dark:bg-gray-800 mb-4">
-                  <BookOpen className="h-8 w-8 text-gray-400" />
+              </CardHeader>
+              <CardContent>
+                <p className="font-medium">By {book.author}</p>
+                {book.description && <p className="text-gray-500 mt-2 line-clamp-3">{book.description}</p>}
+                <div className="mt-4 flex items-center gap-2">
+                  <Badge variant="outline">{book.condition}</Badge>
+                  <Badge
+                    variant={
+                      book.status === "Available" ? "success" : book.status === "Reserved" ? "warning" : "secondary"
+                    }
+                  >
+                    {book.status}
+                  </Badge>
                 </div>
-                <h3 className="text-lg font-medium mb-2">No books for sale</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                  You don't have any books listed for sale. Add a book and set its listing type to "For Sale".
-                </p>
-                <Button onClick={() => router.push("/dashboard/books/new")}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Book For Sale
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button variant="outline" size="sm">
+                  View Details
                 </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="swapping" className="space-y-4">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-gray-100 p-4 dark:bg-gray-800 mb-4">
-                  <BookOpen className="h-8 w-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No books for swap</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                  You don't have any books listed for swap. Add a book and set its listing type to "For Swap".
-                </p>
-                <Button onClick={() => router.push("/dashboard/books/new")}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Book For Swap
+                <Button variant="ghost" size="sm">
+                  Edit
                 </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="donating" className="space-y-4">
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="rounded-full bg-gray-100 p-4 dark:bg-gray-800 mb-4">
-                  <BookOpen className="h-8 w-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">No books for donation</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mb-6">
-                  You don't have any books listed for donation. Add a book and set its listing type to "For Donation".
-                </p>
-                <Button onClick={() => router.push("/dashboard/books/new")}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Book For Donation
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
