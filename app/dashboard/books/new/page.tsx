@@ -18,16 +18,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { BookUpload } from "@/components/dashboard/book-upload"
 import { Loader2, AlertCircle, ArrowLeft, BookPlus } from "lucide-react"
-import { addBook, getCategories, type BookFormValues } from "@/app/actions/book-actions"
+import { addBook, getCategories, type BookFormValues, VALID_CONDITIONS } from "@/app/actions/book-actions"
 
-// Define the form schema with Zod
+// Define the form schema with Zod using the EXACT values from the database constraint
 const bookFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   author: z.string().min(1, "Author is required"),
   isbn: z.string().optional(),
   description: z.string().optional(),
-  // Update the condition enum to match database constraints
-  condition: z.enum(["new", "like_new", "very_good", "good", "fair", "poor"], {
+  // Use the exact values from the database constraint
+  condition: z.enum(["New", "Like New", "Very Good", "Good", "Acceptable"], {
     required_error: "Please select a condition",
   }),
   category_id: z.coerce.number({
@@ -68,7 +68,7 @@ export default function NewBookPage() {
       author: "",
       isbn: "",
       description: "",
-      condition: "good", // This is a valid value in the database
+      condition: "Good", // Using the correct capitalization
       category_id: undefined,
       listing_type: "swap",
       price: null,
@@ -265,13 +265,12 @@ export default function NewBookPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {/* Update the values to match database constraints */}
-                              <SelectItem value="new">New</SelectItem>
-                              <SelectItem value="like_new">Like New</SelectItem>
-                              <SelectItem value="very_good">Very Good</SelectItem>
-                              <SelectItem value="good">Good</SelectItem>
-                              <SelectItem value="fair">Fair</SelectItem>
-                              <SelectItem value="poor">Poor</SelectItem>
+                              {/* Use the exact values from the database constraint */}
+                              {VALID_CONDITIONS.map((condition) => (
+                                <SelectItem key={condition} value={condition}>
+                                  {condition}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormDescription>Select the condition that best describes your book</FormDescription>

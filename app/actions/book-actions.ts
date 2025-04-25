@@ -5,14 +5,14 @@ import { v4 as uuidv4 } from "uuid"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
-// Define the form schema with Zod
+// Define the form schema with Zod using the EXACT values from the database constraint
 const bookFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   author: z.string().min(1, "Author is required"),
   isbn: z.string().optional(),
   description: z.string().optional(),
-  // Update the condition enum to match database constraints
-  condition: z.enum(["new", "like_new", "very_good", "good", "fair", "poor"], {
+  // Use the exact values from the database constraint
+  condition: z.enum(["New", "Like New", "Very Good", "Good", "Acceptable"], {
     required_error: "Please select a condition",
   }),
   category_id: z.coerce.number({
@@ -23,7 +23,6 @@ const bookFormSchema = z.object({
   }),
   price: z.coerce.number().min(0, "Price must be a positive number").optional().nullable(),
   cover_image: z.string().optional(),
-  // Add user_id field to be passed from the client
   user_id: z.string().min(1, "User ID is required"),
 })
 
@@ -94,7 +93,7 @@ export async function addBook(formData: BookFormValues) {
       author: validatedData.author,
       isbn: validatedData.isbn || null,
       description: validatedData.description || null,
-      condition: validatedData.condition,
+      condition: validatedData.condition, // Now using the correct value from the form
       cover_image: validatedData.cover_image || null,
       listing_type: validatedData.listing_type,
       price: validatedData.price,
@@ -137,3 +136,6 @@ export async function getCategories() {
 
   return data || []
 }
+
+// Valid conditions from the database constraint
+export const VALID_CONDITIONS = ["New", "Like New", "Very Good", "Good", "Acceptable"]

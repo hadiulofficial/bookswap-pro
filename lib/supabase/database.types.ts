@@ -45,7 +45,7 @@ export interface Database {
           author: string
           description: string | null
           isbn: string | null
-          condition: "new" | "like_new" | "very_good" | "good" | "fair" | "poor"
+          condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
           cover_image: string | null
           listing_type: string
           price: number | null
@@ -61,7 +61,7 @@ export interface Database {
           author: string
           description?: string | null
           isbn?: string | null
-          condition: "new" | "like_new" | "very_good" | "good" | "fair" | "poor"
+          condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
           cover_image?: string | null
           listing_type: string
           price?: number | null
@@ -77,7 +77,7 @@ export interface Database {
           author?: string
           description?: string | null
           isbn?: string | null
-          condition?: "new" | "like_new" | "very_good" | "good" | "fair" | "poor"
+          condition?: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
           cover_image?: string | null
           listing_type?: string
           price?: number | null
