@@ -1,6 +1,7 @@
 import type React from "react"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
+import { SidebarProvider } from "@/contexts/sidebar-context"
 
 export const metadata = {
   title: "BookSwap | Share Books, Connect Communities",
@@ -17,7 +18,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <SidebarProvider>{children}</SidebarProvider>
+        </AuthProvider>
       </body>
     </html>
   )
