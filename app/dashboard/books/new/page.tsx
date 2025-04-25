@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { DashboardTitle } from "@/components/dashboard/title"
@@ -10,27 +10,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, ArrowLeft, BookPlus, Loader2 } from "lucide-react"
-import { DebugAuth } from "@/components/debug-auth"
 
 export default function NewBookPage() {
-  const { user, session } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [isClient, setIsClient] = useState(false)
 
-  // Form state
+  // Minimal form state
   const [title, setTitle] = useState("")
   const [author, setAuthor] = useState("")
-  const [description, setDescription] = useState("")
-
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,6 +41,7 @@ export default function NewBookPage() {
     setError(null)
 
     try {
+      // Direct fetch to avoid any client-side issues
       const response = await fetch("/api/books/add", {
         method: "POST",
         headers: {
@@ -57,24 +50,21 @@ export default function NewBookPage() {
         body: JSON.stringify({
           title,
           author,
-          description,
           condition: "Good",
-          listing_type: "Exchange", // Correctly capitalized
+          listing_type: "exchange", // Changed from "swap" to "exchange"
+          owner_id: user.id,
           category_id: 1, // Default category
         }),
-        credentials: "include", // Important: include cookies for auth
       })
 
-      const result = await response.json()
-
       if (!response.ok) {
-        throw new Error(result.error || "Failed to add book")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to add book")
       }
 
       setSuccess(true)
       setTimeout(() => {
         router.push("/dashboard/books")
-        router.refresh()
       }, 2000)
     } catch (err: any) {
       console.error("Error adding book:", err)
@@ -82,11 +72,6 @@ export default function NewBookPage() {
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  // Wait for client-side rendering to check auth
-  if (!isClient) {
-    return <div>Loading...</div>
   }
 
   // If not logged in, show error
@@ -101,7 +86,6 @@ export default function NewBookPage() {
         <Button variant="outline" onClick={() => router.push("/login")}>
           Go to Login
         </Button>
-        <DebugAuth />
       </div>
     )
   }
@@ -156,17 +140,6 @@ export default function NewBookPage() {
                     required
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Enter a description of the book"
-                    rows={3}
-                  />
-                </div>
               </div>
 
               <div className="flex justify-end">
@@ -186,7 +159,6 @@ export default function NewBookPage() {
           </CardContent>
         </Card>
       )}
-      <DebugAuth />
     </div>
   )
 }
