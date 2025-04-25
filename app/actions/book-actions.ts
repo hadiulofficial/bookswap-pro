@@ -56,12 +56,24 @@ export async function addBook(formData: BookFormValues) {
       .eq("id", user.id)
       .single()
 
-    if (profileError || !profile) {
-      console.error("Profile error:", profileError || "No profile found for user")
-      return {
-        success: false,
-        error: "Please complete your profile before adding books",
-        needsProfile: true,
+    if (profileError) {
+      console.error("Profile error:", profileError)
+
+      // Try to create a profile automatically
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: user.id,
+        username: `user_${Math.floor(Math.random() * 1000000)}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+
+      if (insertError) {
+        console.error("Error creating profile:", insertError)
+        return {
+          success: false,
+          error: "Please create your profile before adding books",
+          needsProfile: true,
+        }
       }
     }
 

@@ -37,11 +37,9 @@ export async function createUserProfile() {
       return { success: true, message: "Profile already exists" }
     }
 
-    // Create a new profile
+    // Create a new profile with minimal required fields
     const { error } = await supabase.from("profiles").insert({
       id: user.id,
-      full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
-      avatar_url: user.user_metadata?.avatar_url || null,
       username: `user_${Math.floor(Math.random() * 1000000)}`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -49,7 +47,7 @@ export async function createUserProfile() {
 
     if (error) {
       console.error("Error creating profile:", error)
-      return { success: false, error: "Failed to create profile" }
+      return { success: false, error: "Failed to create profile: " + error.message }
     }
 
     // Revalidate paths that might display user profile data

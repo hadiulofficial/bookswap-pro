@@ -37,35 +37,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data } = await supabase.from("profiles").select("*").eq("id", userId).single()
-      setProfile(data)
+      console.log("Fetching profile for user:", userId)
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
-      // If no profile exists, create one
-      if (!data) {
-        try {
-          await fetch("/api/auth/signup", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          })
-
-          // Fetch the newly created profile
-          const { data: newProfile } = await supabase.from("profiles").select("*").eq("id", userId).single()
-          setProfile(newProfile)
-        } catch (error) {
-          console.error("Error creating profile:", error)
-        }
+      if (error) {
+        console.error("Error fetching profile:", error)
+        return null
       }
+
+      console.log("Profile data:", data)
+      setProfile(data)
+      return data
     } catch (error) {
-      console.error("Error fetching profile:", error)
+      console.error("Exception fetching profile:", error)
+      return null
     }
   }
 
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id)
+      return await fetchProfile(user.id)
     }
+    return null
   }
 
   useEffect(() => {
@@ -116,7 +109,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // Update the signOut function to redirect to the login page instead of home page
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
