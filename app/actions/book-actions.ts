@@ -49,6 +49,22 @@ export async function addBook(formData: BookFormValues) {
       return { success: false, error: "You must be logged in to add a book" }
     }
 
+    // Check if user has a profile
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .single()
+
+    if (profileError || !profile) {
+      console.error("Profile error:", profileError || "No profile found for user")
+      return {
+        success: false,
+        error: "Please complete your profile before adding books",
+        needsProfile: true,
+      }
+    }
+
     // Log the user ID to help with debugging
     console.log("User authenticated with ID:", user.id)
 

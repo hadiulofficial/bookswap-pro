@@ -1,11 +1,10 @@
 import type React from "react"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
 import { DashboardHeader } from "@/components/dashboard/header"
-// Import the debug component
 import { DebugAuth } from "@/components/debug-auth"
+import { ProfileCreator } from "@/components/profile-creator"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // Add the DebugAuth component to the layout
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="flex min-h-screen">
@@ -15,6 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
         </div>
       </div>
+      <ProfileCreator />
       <DebugAuth />
     </div>
   )

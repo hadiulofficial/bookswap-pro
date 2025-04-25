@@ -1,7 +1,9 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { NextResponse } from "next/server"
+"use server"
 
-export async function POST(request: Request) {
+import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { revalidatePath } from "next/cache"
+
+export async function createUserProfile() {
   try {
     const supabase = createServerSupabaseClient()
 
@@ -12,7 +14,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       console.error("No authenticated user found during profile creation")
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+      return { success: false, error: "Not authenticated" }
     }
 
     console.log("Creating profile for user:", user.id)
@@ -27,12 +29,12 @@ export async function POST(request: Request) {
     if (profileError && profileError.code !== "PGRST116") {
       // PGRST116 is the error code for "no rows returned" - that's expected if profile doesn't exist
       console.error("Error checking for existing profile:", profileError)
-      return NextResponse.json({ error: "Failed to check for existing profile" }, { status: 500 })
+      return { success: false, error: "Failed to check for existing profile" }
     }
 
     if (existingProfile) {
       console.log("Profile already exists for user:", user.id)
-      return NextResponse.json({ message: "Profile already exists" })
+      return { success: true, message: "Profile already exists" }
     }
 
     // Create a new profile
@@ -47,13 +49,17 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Error creating profile:", error)
-      return NextResponse.json({ error: "Failed to create profile" }, { status: 500 })
+      return { success: false, error: "Failed to create profile" }
     }
 
+    // Revalidate paths that might display user profile data
+    revalidatePath("/dashboard")
+    revalidatePath("/profile")
+
     console.log("Profile created successfully for user:", user.id)
-    return NextResponse.json({ message: "Profile created successfully" })
-  } catch (error) {
+    return { success: true, message: "Profile created successfully" }
+  } catch (error: any) {
     console.error("Server error during profile creation:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return { success: false, error: error.message || "Internal server error" }
   }
 }
