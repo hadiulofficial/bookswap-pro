@@ -14,7 +14,7 @@ export type BookFormValues = {
   description?: string
   condition: string
   category_id: number
-  listing_type: "Sale" | "Exchange" | "Donation"
+  listing_type: "Sale" | "Exchange" | "Donation" | "sale" | "swap" | "donation"
   price?: number | null
   cover_image?: string
   user_id: string
@@ -70,6 +70,10 @@ export async function addBook(data: BookFormValues) {
     // Create a unique ID for the book
     const bookId = uuidv4()
 
+    // Convert listing type to database format
+    let listingType = data.listing_type.toLowerCase()
+    if (listingType === "exchange") listingType = "swap"
+
     // Add the book to the database
     const { error } = await supabase.from("books").insert({
       id: bookId,
@@ -79,11 +83,11 @@ export async function addBook(data: BookFormValues) {
       description: data.description || null,
       condition: data.condition,
       cover_image: data.cover_image || null,
-      listing_type: data.listing_type,
-      price: data.listing_type === "Sale" ? data.price : null,
+      listing_type: listingType,
+      price: listingType === "sale" ? data.price : null,
       owner_id: userId,
       category_id: data.category_id,
-      status: "Available",
+      status: "available",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
@@ -151,6 +155,10 @@ export async function updateBook(bookId: string, data: BookFormValues) {
       }
     }
 
+    // Convert listing type to database format
+    let listingType = data.listing_type.toLowerCase()
+    if (listingType === "exchange") listingType = "swap"
+
     // Update the book in the database
     const { error } = await supabase
       .from("books")
@@ -161,8 +169,8 @@ export async function updateBook(bookId: string, data: BookFormValues) {
         description: data.description || null,
         condition: data.condition,
         cover_image: data.cover_image || null,
-        listing_type: data.listing_type,
-        price: data.listing_type === "Sale" ? data.price : null,
+        listing_type: listingType,
+        price: listingType === "sale" ? data.price : null,
         category_id: data.category_id,
         updated_at: new Date().toISOString(),
       })

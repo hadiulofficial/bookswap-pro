@@ -15,9 +15,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DashboardTitle } from "@/components/dashboard/title"
 import { BookUpload } from "@/components/dashboard/book-upload"
-import { VALID_CONDITIONS, updateBook, getBook, getCategories } from "@/app/actions/book-actions"
+import { VALID_CONDITIONS, updateBook, getCategories } from "@/app/actions/book-actions"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { createClientSupabaseClient } from "@/lib/supabase/client"
 
 // Define the form schema with Zod
 const formSchema = z.object({
@@ -41,6 +42,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [bookNotFound, setBookNotFound] = useState(false)
+  const supabase = createClientSupabaseClient()
 
   // Initialize the form
   const form = useForm<z.infer<typeof formSchema>>({
@@ -68,10 +70,15 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         setIsLoading(true)
         setError(null)
 
-        // Fetch the book data
-        const bookData = await getBook(params.id)
+        // Fetch the book data directly from Supabase client
+        const { data: bookData, error: bookError } = await supabase
+          .from("books")
+          .select("*")
+          .eq("id", params.id)
+          .single()
 
-        if (!bookData) {
+        if (bookError || !bookData) {
+          console.error("Error fetching book:", bookError)
           setBookNotFound(true)
           return
         }
@@ -86,15 +93,21 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         const categoriesData = await getCategories()
         setCategories(categoriesData)
 
+        // Convert listing_type to match our enum if needed
+        let listingType = bookData.listing_type
+        if (listingType === "sale") listingType = "Sale"
+        if (listingType === "swap") listingType = "Exchange"
+        if (listingType === "donation") listingType = "Donation"
+
         // Set form values
         form.reset({
-          title: bookData.title,
-          author: bookData.author,
+          title: bookData.title || "",
+          author: bookData.author || "",
           isbn: bookData.isbn || "",
           description: bookData.description || "",
-          condition: bookData.condition,
+          condition: bookData.condition || "",
           category_id: bookData.category_id || 0,
-          listing_type: bookData.listing_type,
+          listing_type: listingType as "Sale" | "Exchange" | "Donation",
           price: bookData.price,
           cover_image: bookData.cover_image || "",
           user_id: user.id,
@@ -110,7 +123,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
     if (user) {
       fetchData()
     }
-  }, [user, params.id, form])
+  }, [user, params.id, form, supabase])
 
   // Handle form submission
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -130,6 +143,14 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       if (values.listing_type !== "Sale") {
         values.price = null
       }
+
+      // Convert listing_type to match database format if needed
+      let listingType = values.listing_type
+      if (listingType === "Exchange") listingType = "swap" as any
+      if (listingType === "Sale") listingType = "sale" as any
+      if (listingType === "Donation") listingType = "donation" as any
+
+      values.listing_type = listingType as any
 
       // Call the server action to update the book
       const result = await updateBook(params.id, values)
