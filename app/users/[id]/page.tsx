@@ -12,7 +12,19 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
-import { BookOpen, Calendar, MapPin, Globe, ArrowLeft, Loader2, RefreshCw, Check } from "lucide-react"
+import {
+  BookOpen,
+  Calendar,
+  MapPin,
+  Globe,
+  ArrowLeft,
+  Loader2,
+  RefreshCw,
+  Check,
+  DollarSign,
+  Gift,
+  BookMarked,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -22,6 +34,13 @@ export default function UserProfilePage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [books, setBooks] = useState<any[]>([])
+  const [bookStats, setBookStats] = useState({
+    total: 0,
+    sold: 0,
+    donated: 0,
+    exchanged: 0,
+    available: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,6 +49,7 @@ export default function UserProfilePage() {
 
     fetchUserProfile()
     fetchUserBooks()
+    fetchBookStats()
   }, [id])
 
   const fetchUserProfile = async () => {
@@ -63,6 +83,28 @@ export default function UserProfilePage() {
       setError(err.message || "Failed to load books")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchBookStats = async () => {
+    try {
+      // Get all books for stats calculation
+      const { data, error } = await supabase.from("books").select("id, listing_type, status").eq("owner_id", id)
+
+      if (error) throw error
+
+      if (data) {
+        const stats = {
+          total: data.length,
+          sold: data.filter((book) => book.listing_type === "Sell" && book.status === "reserved").length,
+          donated: data.filter((book) => book.listing_type === "Donate" && book.status === "reserved").length,
+          exchanged: data.filter((book) => book.listing_type === "Exchange" && book.status === "reserved").length,
+          available: data.filter((book) => book.status === "Available").length,
+        }
+        setBookStats(stats)
+      }
+    } catch (err: any) {
+      console.error("Error fetching book stats:", err)
     }
   }
 
@@ -180,22 +222,48 @@ export default function UserProfilePage() {
                     </div>
 
                     <div>
-                      <h2 className="text-lg font-semibold mb-4">Stats</h2>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-emerald-600">{books.length}</p>
-                          <p className="text-gray-500">Books Listed</p>
-                        </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-center">
-                          <p className="text-2xl font-bold text-emerald-600">
-                            {profile?.created_at
-                              ? Math.floor(
-                                  (new Date().getTime() - new Date(profile.created_at).getTime()) /
-                                    (1000 * 60 * 60 * 24 * 30),
-                                )
-                              : 0}
-                          </p>
-                          <p className="text-gray-500">Months Active</p>
+                      <h2 className="text-lg font-semibold mb-3">Book Activity</h2>
+                      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <div className="grid grid-cols-3 sm:grid-cols-5 divide-x divide-gray-100 dark:divide-gray-700">
+                          <div className="p-3 flex flex-col items-center justify-center text-center">
+                            <div className="bg-emerald-100 dark:bg-emerald-800/30 p-1.5 rounded-full mb-1.5">
+                              <BookMarked className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <p className="text-xl font-bold text-emerald-600">{bookStats.total}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
+                          </div>
+
+                          <div className="p-3 flex flex-col items-center justify-center text-center">
+                            <div className="bg-green-100 dark:bg-green-800/30 p-1.5 rounded-full mb-1.5">
+                              <BookOpen className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            </div>
+                            <p className="text-xl font-bold text-green-600">{bookStats.available}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Available</p>
+                          </div>
+
+                          <div className="p-3 flex flex-col items-center justify-center text-center">
+                            <div className="bg-blue-100 dark:bg-blue-800/30 p-1.5 rounded-full mb-1.5">
+                              <RefreshCw className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <p className="text-xl font-bold text-blue-600">{bookStats.exchanged}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Exchanged</p>
+                          </div>
+
+                          <div className="p-3 flex flex-col items-center justify-center text-center border-t sm:border-t-0 sm:border-l">
+                            <div className="bg-purple-100 dark:bg-purple-800/30 p-1.5 rounded-full mb-1.5">
+                              <Gift className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <p className="text-xl font-bold text-purple-600">{bookStats.donated}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Donated</p>
+                          </div>
+
+                          <div className="p-3 flex flex-col items-center justify-center text-center border-t sm:border-t-0 sm:border-l">
+                            <div className="bg-amber-100 dark:bg-amber-800/30 p-1.5 rounded-full mb-1.5">
+                              <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <p className="text-xl font-bold text-amber-600">{bookStats.sold}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Sold</p>
+                          </div>
                         </div>
                       </div>
                     </div>
