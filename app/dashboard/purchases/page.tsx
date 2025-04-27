@@ -1,336 +1,357 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { Package, Calendar, ArrowRight, ShoppingCart, ExternalLink, Truck, Clock } from "lucide-react"
+import { format } from "date-fns"
+import {
+  Loader2,
+  Package,
+  ShoppingBag,
+  Clock,
+  CheckCircle,
+  Truck,
+  XCircle,
+  ChevronRight,
+  Calendar,
+  MapPin,
+} from "lucide-react"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Shell, ShellContent, ShellHeader, ShellTitle, ShellDescription } from "@/components/ui/shell"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { useAuth } from "@/contexts/auth-context"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function PurchasesPage() {
-  const [purchases, setPurchases] = useState<any[]>([])
+  const { user } = useAuth()
+  const router = useRouter()
+  const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
 
   useEffect(() => {
-    async function fetchPurchases() {
+    async function fetchOrders() {
+      if (!user?.id) return
+
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-
-        if (!user) {
-          setPurchases([])
-          setLoading(false)
-          return
-        }
-
-        // Fetch orders where the buyer is the current user
-        const { data: orders, error: ordersError } = await supabase
+        const { data, error } = await supabase
           .from("orders")
           .select(`
             *,
-            books(*),
-            seller:seller_id(id, email, profiles(*))
+            books (*),
+            shipping_details (*)
           `)
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
 
-        if (ordersError) {
-          console.error("Error fetching purchases:", ordersError)
-          setPurchases([])
-        } else {
-          // Fetch shipping details for each order
-          if (orders && orders.length > 0) {
-            const ordersWithShipping = await Promise.all(
-              orders.map(async (order) => {
-                const { data: shippingData } = await supabase
-                  .from("shipping_details")
-                  .select("*")
-                  .eq("order_id", order.id)
-                  .single()
-
-                return {
-                  ...order,
-                  shipping_details: shippingData,
-                }
-              }),
-            )
-            setPurchases(ordersWithShipping || [])
-          } else {
-            setPurchases([])
-          }
+        if (error) {
+          console.error("Error fetching orders:", error)
+          return
         }
+
+        setOrders(data || [])
       } catch (error) {
-        console.error("Error in fetchPurchases:", error)
-        setPurchases([])
+        console.error("Error in fetchOrders:", error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchPurchases()
-  }, [supabase])
+    fetchOrders()
+  }, [user, supabase])
 
-  const getStatusBadge = (status: string) => {
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "pending":
+        return <Clock className="h-5 w-5 text-yellow-500" />
+      case "processing":
+        return <Clock className="h-5 w-5 text-blue-500" />
+      case "shipped":
+        return <Truck className="h-5 w-5 text-purple-500" />
+      case "delivered":
+        return <CheckCircle className="h-5 w-5 text-green-500" />
+      case "cancelled":
+        return <XCircle className="h-5 w-5 text-red-500" />
+      default:
+        return <Clock className="h-5 w-5 text-gray-500" />
+    }
+  }
+
+  const getStatusBadge = (status) => {
     switch (status) {
       case "pending":
         return (
-          <div className="flex items-center gap-1.5">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-500"></span>
-            </span>
-            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-              Pending
-            </Badge>
-          </div>
+          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+            Pending
+          </Badge>
         )
       case "processing":
         return (
-          <div className="flex items-center gap-1.5">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
-            </span>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              Processing
-            </Badge>
-          </div>
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            Processing
+          </Badge>
         )
       case "shipped":
         return (
-          <div className="flex items-center gap-1.5">
-            <Truck className="h-3.5 w-3.5 text-purple-600" />
-            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-              Shipped
-            </Badge>
-          </div>
+          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+            Shipped
+          </Badge>
         )
       case "delivered":
         return (
-          <div className="flex items-center gap-1.5">
-            <Package className="h-3.5 w-3.5 text-green-600" />
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              Delivered
-            </Badge>
-          </div>
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            Delivered
+          </Badge>
         )
       case "cancelled":
         return (
-          <div className="flex items-center gap-1.5">
-            <svg className="h-3.5 w-3.5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-              Cancelled
-            </Badge>
-          </div>
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+            Cancelled
+          </Badge>
         )
       default:
         return <Badge variant="outline">{status}</Badge>
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(date)
+  const getStatusText = (status) => {
+    switch (status) {
+      case "pending":
+        return "Your order is being processed"
+      case "processing":
+        return "Your order is being prepared for shipping"
+      case "shipped":
+        return "Your order is on its way"
+      case "delivered":
+        return "Your order has been delivered"
+      case "cancelled":
+        return "Your order has been cancelled"
+      default:
+        return "Order status unknown"
+    }
   }
 
-  const getEstimatedDelivery = (status: string, createdAt: string) => {
-    if (status === "delivered") {
-      return "Delivered"
-    }
+  const activeOrders = orders.filter((order) => ["pending", "processing", "shipped"].includes(order.status))
 
-    if (status === "cancelled") {
-      return "Cancelled"
-    }
-
-    // Add 7-10 days to the order date
-    const orderDate = new Date(createdAt)
-    const minDelivery = new Date(orderDate)
-    minDelivery.setDate(orderDate.getDate() + 7)
-
-    const maxDelivery = new Date(orderDate)
-    maxDelivery.setDate(orderDate.getDate() + 10)
-
-    const formatOptions: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }
-    return `Est. ${minDelivery.toLocaleDateString("en-US", formatOptions)} - ${maxDelivery.toLocaleDateString("en-US", formatOptions)}`
-  }
+  const completedOrders = orders.filter((order) => ["delivered", "cancelled"].includes(order.status))
 
   if (loading) {
     return (
-      <div className="container mx-auto py-10">
-        <h1 className="text-3xl font-bold mb-6">Your Purchases</h1>
-        <div className="grid gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="overflow-hidden">
-              <CardHeader className="pb-0">
-                <Skeleton className="h-6 w-1/3 mb-2" />
-                <Skeleton className="h-4 w-1/4" />
-              </CardHeader>
-              <CardContent className="pb-0">
-                <div className="flex flex-col md:flex-row gap-6">
-                  <Skeleton className="h-32 w-24 rounded-md" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-4 w-1/4" />
-                  </div>
-                  <div className="w-full md:w-1/3 space-y-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-2/3" />
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end pt-4">
-                <Skeleton className="h-9 w-28" />
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-4">
+        <ShoppingBag className="h-12 w-12 text-gray-400 mb-4" />
+        <h3 className="text-xl font-semibold mb-2">No purchases yet</h3>
+        <p className="text-gray-500 mb-6 max-w-md">
+          You haven't made any purchases yet. Browse our collection of books to find something you like.
+        </p>
+        <Button onClick={() => router.push("/books")}>Browse Books</Button>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <Shell>
-        <ShellHeader>
-          <ShellTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-6 w-6" />
-            Your Purchases
-          </ShellTitle>
-          <ShellDescription>Track and manage your book orders</ShellDescription>
-        </ShellHeader>
-        <ShellContent>
-          {purchases.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="rounded-full bg-muted p-3 mb-4">
-                <ShoppingCart className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No purchases yet</h3>
-              <p className="text-muted-foreground max-w-sm mb-6">
-                When you purchase books, they will appear here for tracking.
-              </p>
-              <Button asChild>
-                <Link href="/books">Browse Books</Link>
-              </Button>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">My Purchases</h2>
+        <p className="text-muted-foreground">View and manage your book purchases.</p>
+      </div>
+
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="active">
+            Active Orders{" "}
+            {activeOrders.length > 0 && (
+              <span className="ml-1 text-xs bg-primary text-white rounded-full w-5 h-5 inline-flex items-center justify-center">
+                {activeOrders.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="completed">Completed Orders</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="active" className="space-y-4">
+          {activeOrders.length === 0 ? (
+            <div className="bg-muted/30 rounded-lg p-8 text-center">
+              <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No active orders</h3>
+              <p className="text-muted-foreground">You don't have any active orders at the moment.</p>
             </div>
           ) : (
-            <div className="grid gap-6">
-              {purchases.map((purchase) => (
-                <Card key={purchase.id} className="overflow-hidden transition-all duration-200 hover:shadow-md">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">Order #{purchase.id.substring(0, 8)}</CardTitle>
-                        <CardDescription className="flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {formatDate(purchase.created_at)}
-                        </CardDescription>
-                      </div>
-                      {getStatusBadge(purchase.status)}
+            activeOrders.map((order) => (
+              <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <CardContent className="p-0">
+                  <div className="p-4 md:p-6 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                    <div className="flex-shrink-0 h-24 w-16 bg-gray-100 rounded overflow-hidden">
+                      {order.books?.cover_image ? (
+                        <img
+                          src={order.books.cover_image || "/placeholder.svg"}
+                          alt={order.books.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="pb-2">
-                    <div className="flex flex-col md:flex-row gap-6">
-                      <div className="relative h-32 w-24 overflow-hidden rounded-md border group">
-                        {purchase.books?.cover_image ? (
-                          <Image
-                            src={purchase.books.cover_image || "/placeholder.svg"}
-                            alt={purchase.books.title}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            sizes="(max-width: 768px) 100vw, 200px"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-muted">
-                            <Package className="h-8 w-8 text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg mb-1">{purchase.books?.title}</h3>
-                        <p className="text-muted-foreground text-sm mb-3">{purchase.books?.author}</p>
-                        <p className="font-medium">${purchase.amount.toFixed(2)}</p>
 
-                        <div className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Link
-                            href={`/users/${purchase.seller_id}`}
-                            className="flex items-center gap-1 text-primary hover:underline"
-                          >
-                            Sold by:{" "}
-                            {purchase.seller?.profiles[0]?.full_name ||
-                              purchase.seller?.profiles[0]?.username ||
-                              purchase.seller?.email}
-                            <ExternalLink className="h-3 w-3" />
-                          </Link>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-medium truncate">{order.books?.title}</h4>
+                            {getStatusBadge(order.status)}
+                          </div>
+                          <p className="text-sm text-gray-500">By {order.books?.author}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">${Number.parseFloat(order.amount).toFixed(2)}</p>
                         </div>
                       </div>
 
-                      <div className="w-full md:w-1/3">
-                        <div className="bg-muted/30 p-3 rounded-lg mb-3">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Delivery Status</span>
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-sm">
-                              <span>Status:</span>
-                              <span className="font-medium capitalize">{purchase.status}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span>Delivery:</span>
-                              <span>{getEstimatedDelivery(purchase.status, purchase.created_at)}</span>
-                            </div>
-                          </div>
+                      <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>Ordered on {format(new Date(order.created_at), "MMM d, yyyy")}</span>
                         </div>
-
-                        {purchase.shipping_details && (
-                          <div className="text-sm text-muted-foreground">
-                            <p>
-                              Shipping to: {purchase.shipping_details.city}, {purchase.shipping_details.state}
-                            </p>
-                          </div>
-                        )}
+                        <div className="hidden sm:block text-muted-foreground">•</div>
+                        <div className="flex items-center gap-1.5">
+                          {getStatusIcon(order.status)}
+                          <span className="font-medium">{getStatusText(order.status)}</span>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-end pt-4">
+                  </div>
+
+                  <Separator />
+
+                  <div className="p-4 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground">{order.shipping_details?.full_name}</p>
+                        <p>{order.shipping_details?.address_line1}</p>
+                        <p>
+                          {order.shipping_details?.city}, {order.shipping_details?.state}{" "}
+                          {order.shipping_details?.postal_code}
+                        </p>
+                      </div>
+                    </div>
+
                     <Button
                       variant="outline"
-                      className="group"
+                      className="sm:self-end flex items-center gap-1"
                       onClick={() => {
-                        // Create a tracking URL (simulated)
-                        const trackingUrl = purchase.tracking_number
-                          ? `https://tracking.example.com/${purchase.tracking_number}`
-                          : `mailto:${purchase.seller?.email}?subject=Order%20${purchase.id.substring(0, 8)}%20Status&body=Hello,%0A%0AI%20would%20like%20to%20inquire%20about%20the%20status%20of%20my%20order%20${purchase.id.substring(0, 8)}.%0A%0AThank%20you.`
-
-                        // Open tracking URL or email
-                        window.open(trackingUrl, "_blank")
+                        // Future implementation: view order details
+                        console.log("View order details", order.id)
                       }}
                     >
                       Track Order
-                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
           )}
-        </ShellContent>
-      </Shell>
+        </TabsContent>
+
+        <TabsContent value="completed" className="space-y-4">
+          {completedOrders.length === 0 ? (
+            <div className="bg-muted/30 rounded-lg p-8 text-center">
+              <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No completed orders</h3>
+              <p className="text-muted-foreground">You don't have any completed orders yet.</p>
+            </div>
+          ) : (
+            completedOrders.map((order) => (
+              <Card key={order.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <CardContent className="p-0">
+                  <div className="p-4 md:p-6 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                    <div className="flex-shrink-0 h-24 w-16 bg-gray-100 rounded overflow-hidden">
+                      {order.books?.cover_image ? (
+                        <img
+                          src={order.books.cover_image || "/placeholder.svg"}
+                          alt={order.books.title}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-medium truncate">{order.books?.title}</h4>
+                            {getStatusBadge(order.status)}
+                          </div>
+                          <p className="text-sm text-gray-500">By {order.books?.author}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">${Number.parseFloat(order.amount).toFixed(2)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>Ordered on {format(new Date(order.created_at), "MMM d, yyyy")}</span>
+                        </div>
+                        <div className="hidden sm:block text-muted-foreground">•</div>
+                        <div className="flex items-center gap-1.5">
+                          {getStatusIcon(order.status)}
+                          <span className="font-medium">{getStatusText(order.status)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="p-4 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground">{order.shipping_details?.full_name}</p>
+                        <p>{order.shipping_details?.address_line1}</p>
+                        <p>
+                          {order.shipping_details?.city}, {order.shipping_details?.state}{" "}
+                          {order.shipping_details?.postal_code}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      className="sm:self-end flex items-center gap-1"
+                      onClick={() => {
+                        // Future implementation: view order details
+                        console.log("View order details", order.id)
+                      }}
+                    >
+                      View Details
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
