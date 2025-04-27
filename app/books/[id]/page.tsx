@@ -23,6 +23,7 @@ import {
   DollarSign,
   ShoppingCart,
   Gift,
+  Check,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
@@ -44,11 +45,13 @@ export default function BookDetailsPage() {
   const [inWishlist, setInWishlist] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
   const [requestLoading, setRequestLoading] = useState(false)
+  const [hasRequested, setHasRequested] = useState(false)
 
   useEffect(() => {
     fetchBookDetails()
     if (user) {
       checkWishlistStatus()
+      checkRequestStatus()
     }
   }, [bookId, user])
 
@@ -113,6 +116,27 @@ export default function BookDetailsPage() {
       }
     } catch (err) {
       console.error("Error checking wishlist status:", err)
+    }
+  }
+
+  const checkRequestStatus = async () => {
+    if (!user || !bookId) return
+
+    try {
+      const { data, error } = await supabase
+        .from("book_requests")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("book_id", bookId)
+        .maybeSingle()
+
+      if (!error && data) {
+        setHasRequested(true)
+      } else {
+        setHasRequested(false)
+      }
+    } catch (err) {
+      console.error("Error checking request status:", err)
     }
   }
 
@@ -196,6 +220,7 @@ export default function BookDetailsPage() {
       console.log("Request result:", result) // Debug log
 
       if (result.success) {
+        setHasRequested(true)
         toast({
           title: "Request Sent Successfully!",
           description: "The book owner has been notified of your request.",
@@ -398,21 +423,27 @@ export default function BookDetailsPage() {
                               </Button>
                             )}
 
-                            {book.listing_type === "Donate" && (
-                              <Button
-                                size="lg"
-                                className="flex-1 md:flex-none"
-                                onClick={handleRequestBook}
-                                disabled={requestLoading}
-                              >
-                                {requestLoading ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Gift className="mr-2 h-4 w-4" />
-                                )}
-                                {requestLoading ? "Sending Request..." : "Request Book"}
-                              </Button>
-                            )}
+                            {book.listing_type === "Donate" &&
+                              (hasRequested ? (
+                                <Button size="lg" variant="outline" className="flex-1 md:flex-none bg-gray-50" disabled>
+                                  <Check className="mr-2 h-4 w-4 text-green-500" />
+                                  Request Sent
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="lg"
+                                  className="flex-1 md:flex-none"
+                                  onClick={handleRequestBook}
+                                  disabled={requestLoading}
+                                >
+                                  {requestLoading ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Gift className="mr-2 h-4 w-4" />
+                                  )}
+                                  {requestLoading ? "Sending Request..." : "Request Book"}
+                                </Button>
+                              ))}
                           </>
                         ) : (
                           <Button

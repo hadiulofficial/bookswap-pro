@@ -17,6 +17,7 @@ import {
   LogOut,
   Menu,
   X,
+  Gift,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -73,6 +74,11 @@ export function DashboardSidebar() {
       icon: <RefreshCw className="h-5 w-5" />,
     },
     {
+      href: "/dashboard/requests",
+      title: "Book Requests",
+      icon: <Gift className="h-5 w-5" />,
+    },
+    {
       href: "/dashboard/messages",
       title: "Messages",
       icon: <MessageSquare className="h-5 w-5" />,
@@ -91,11 +97,6 @@ export function DashboardSidebar() {
       href: "/dashboard/settings",
       title: "Settings",
       icon: <Settings className="h-5 w-5" />,
-    },
-    {
-      title: "Book Requests",
-      href: "/dashboard/requests",
-      icon: <MessageSquare className="h-5 w-5" />,
     },
   ]
 

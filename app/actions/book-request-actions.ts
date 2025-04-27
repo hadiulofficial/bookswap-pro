@@ -25,7 +25,7 @@ export async function requestDonatedBook(userId: string, bookId: string, message
     // Check if the book exists and is a donation listing
     const { data: book, error: bookError } = await supabase
       .from("books")
-      .select("id, owner_id, listing_type, status")
+      .select("id, owner_id, listing_type, status, title")
       .eq("id", bookId)
       .single()
 
@@ -39,15 +39,6 @@ export async function requestDonatedBook(userId: string, bookId: string, message
       return { success: false, error: "This book is not available for donation" }
     }
 
-    // Check if the book is already reserved or unavailable
-    // Note: We're removing the status check for now since we're not sure what status values are being used
-    // We'll add it back once we confirm the correct status values
-    /*
-    if (book.status !== "available") {
-      return { success: false, error: "This book is no longer available" }
-    }
-    */
-
     // Check if the user is not requesting their own book
     if (book.owner_id === userId) {
       return { success: false, error: "You cannot request your own book" }
@@ -59,7 +50,6 @@ export async function requestDonatedBook(userId: string, bookId: string, message
       .select("id")
       .eq("user_id", userId)
       .eq("book_id", bookId)
-      .eq("status", "pending")
       .maybeSingle()
 
     if (checkError) {
@@ -70,6 +60,15 @@ export async function requestDonatedBook(userId: string, bookId: string, message
     if (existingRequest) {
       return { success: false, error: "You have already requested this book" }
     }
+
+    // Get requester's name for the notification
+    const { data: requesterProfile } = await supabase
+      .from("profiles")
+      .select("username, full_name")
+      .eq("id", userId)
+      .single()
+
+    const requesterName = requesterProfile?.full_name || requesterProfile?.username || "Someone"
 
     // Create a new request
     const requestId = uuidv4()
@@ -89,12 +88,12 @@ export async function requestDonatedBook(userId: string, bookId: string, message
       return { success: false, error: "Failed to create request" }
     }
 
-    // Add a notification for the book owner
+    // Add a notification for the book owner with more details
     await supabase.from("notifications").insert({
       id: uuidv4(),
       user_id: book.owner_id,
       title: "New Book Request",
-      message: `Someone has requested your donated book.`,
+      message: `${requesterName} has requested your book "${book.title}". Check your requests to respond.`,
       type: "book_request",
       related_id: requestId,
       read: false,
@@ -183,7 +182,7 @@ export async function updateRequestStatus(requestId: string, status: "approved" 
     // Check if the request exists and belongs to the user
     const { data: request, error: fetchError } = await supabase
       .from("book_requests")
-      .select("id, owner_id, user_id, book_id, status")
+      .select("id, owner_id, user_id, book_id, status, books(title)")
       .eq("id", requestId)
       .single()
 
@@ -231,12 +230,18 @@ export async function updateRequestStatus(requestId: string, status: "approved" 
       }
     }
 
-    // Add a notification for the requester
+    // Get book title for notification
+    const bookTitle = request.books?.title || "requested book"
+
+    // Add a notification for the requester with more details
     await supabase.from("notifications").insert({
       id: uuidv4(),
       user_id: request.user_id,
       title: status === "approved" ? "Book Request Approved" : "Book Request Declined",
-      message: status === "approved" ? "Your book request has been approved!" : "Your book request has been declined.",
+      message:
+        status === "approved"
+          ? `Your request for "${bookTitle}" has been approved! Contact the owner to arrange pickup.`
+          : `Your request for "${bookTitle}" has been declined.`,
       type: "request_update",
       related_id: requestId,
       read: false,
