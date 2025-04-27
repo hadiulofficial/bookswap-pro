@@ -22,11 +22,17 @@ export async function POST(request: Request) {
       id: bookId,
       title: data.title,
       author: data.author,
+      description: data.description || "",
       condition: data.condition || "Good",
-      listing_type: "Exchange", // Correctly capitalized
+      listing_type: data.listing_type || "Exchange", // Correctly capitalized
       owner_id: data.owner_id,
       category_id: data.category_id || 1,
       status: "Available", // Correctly capitalized
+      isbn: data.isbn || null,
+      language: data.language || "English",
+      publish_year: data.publish_year || null,
+      publisher: data.publisher || null,
+      price: data.price || null,
     })
 
     // Add the book to the database
@@ -36,10 +42,15 @@ export async function POST(request: Request) {
       author: data.author,
       description: data.description || "",
       condition: data.condition || "Good",
-      listing_type: "Exchange", // Correctly capitalized
+      listing_type: data.listing_type || "Exchange", // Correctly capitalized
       owner_id: data.owner_id,
       category_id: data.category_id || 1,
       status: "Available", // Correctly capitalized
+      isbn: data.isbn || null,
+      language: data.language || "English",
+      publish_year: data.publish_year || null,
+      publisher: data.publisher || null,
+      price: data.price || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })

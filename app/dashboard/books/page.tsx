@@ -75,7 +75,7 @@ export default function BooksPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <DashboardTitle title="My Books" description="Manage your book listings" />
-        <Button onClick={() => router.push("/dashboard/books/add-fixed")}>
+        <Button onClick={() => router.push("/dashboard/books/add")}>
           <Plus className="mr-2 h-4 w-4" /> Add Book
         </Button>
       </div>
@@ -118,7 +118,7 @@ export default function BooksPage() {
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
           <h2 className="text-xl font-medium mb-2">You haven't added any books yet</h2>
           <p className="text-gray-500 mb-4">Add your first book to start exchanging with others</p>
-          <Button onClick={() => router.push("/dashboard/books/add-fixed")}>Add Your First Book</Button>
+          <Button onClick={() => router.push("/dashboard/books/add")}>Add Your First Book</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
