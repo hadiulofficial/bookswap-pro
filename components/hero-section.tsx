@@ -9,7 +9,7 @@ export function HeroSection() {
   const { user } = useAuth()
 
   // Determine the destination for the "Get Started" button
-  const getStartedHref = user ? "/dashboard" : "/login"
+  const getStartedHref = "/books"
 
   return (
     <section className="relative overflow-hidden py-16 md:py-24 lg:py-32 bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
