@@ -499,6 +499,22 @@ export default function SalesPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="mt-4 space-y-2">
+              <p className="text-sm font-medium">Shipping Address:</p>
+              <div className="text-sm p-3 bg-muted rounded-md">
+                <p className="font-medium">{selectedOrder?.shipping_details?.full_name}</p>
+                <p>{selectedOrder?.shipping_details?.address_line1}</p>
+                {selectedOrder?.shipping_details?.address_line2 && (
+                  <p>{selectedOrder?.shipping_details?.address_line2}</p>
+                )}
+                <p>
+                  {selectedOrder?.shipping_details?.city}, {selectedOrder?.shipping_details?.state}{" "}
+                  {selectedOrder?.shipping_details?.postal_code}
+                </p>
+                <p>{selectedOrder?.shipping_details?.country}</p>
+                {selectedOrder?.shipping_details?.phone && <p>Phone: {selectedOrder?.shipping_details?.phone}</p>}
+              </div>
+            </div>
           </div>
 
           <DialogFooter>
