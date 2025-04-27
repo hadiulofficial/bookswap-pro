@@ -466,7 +466,11 @@ export default function BookDetailsPage() {
                         {book.owner_id !== user.id ? (
                           <>
                             {book.listing_type === "Exchange" && (
-                              <Button size="lg" className="flex-1 md:flex-none">
+                              <Button
+                                size="lg"
+                                className="flex-1 md:flex-none"
+                                onClick={() => router.push(`/books/${bookId}/swap`)}
+                              >
                                 <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
                               </Button>
                             )}

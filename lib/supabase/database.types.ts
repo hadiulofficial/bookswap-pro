@@ -195,6 +195,41 @@ export interface Database {
           created_at?: string
         }
       }
+      book_swaps: {
+        Row: {
+          id: string
+          requester_id: string
+          owner_id: string
+          requested_book_id: string
+          offered_book_id: string
+          message: string | null
+          status: "pending" | "approved" | "rejected"
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          requester_id: string
+          owner_id: string
+          requested_book_id: string
+          offered_book_id: string
+          message?: string | null
+          status?: "pending" | "approved" | "rejected"
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          requester_id?: string
+          owner_id?: string
+          requested_book_id?: string
+          offered_book_id?: string
+          message?: string | null
+          status?: "pending" | "approved" | "rejected"
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
