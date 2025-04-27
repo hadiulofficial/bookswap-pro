@@ -33,6 +33,8 @@ export default function PurchasesPage() {
       if (!user?.id) return
 
       try {
+        console.log("Fetching orders for user:", user.id)
+
         const { data, error } = await supabase
           .from("orders")
           .select(`
@@ -53,6 +55,7 @@ export default function PurchasesPage() {
           return
         }
 
+        console.log("Fetched orders:", data)
         setOrders(data || [])
       } catch (error) {
         console.error("Error in fetchOrders:", error)
@@ -61,7 +64,9 @@ export default function PurchasesPage() {
       }
     }
 
-    fetchOrders()
+    if (user?.id) {
+      fetchOrders()
+    }
   }, [user, supabase])
 
   const getStatusIcon = (status) => {
@@ -375,6 +380,9 @@ export default function PurchasesPage() {
                 <div>
                   <h4 className="font-medium">{selectedOrder.books?.title}</h4>
                   <p className="text-sm text-gray-500">By {selectedOrder.books?.author}</p>
+                  <p className="text-sm text-gray-500">
+                    Sold by {selectedOrder.profiles?.full_name || selectedOrder.profiles?.username || "Unknown Seller"}
+                  </p>
                 </div>
               </div>
 

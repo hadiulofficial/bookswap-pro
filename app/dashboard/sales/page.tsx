@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { format } from "date-fns"
-import { Loader2, Package, Clock, CheckCircle, Truck, XCircle, Calendar, MapPin, DollarSign } from "lucide-react"
+import { Loader2, Package, Clock, CheckCircle, Truck, XCircle, Calendar, MapPin, DollarSign, User } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
 import { updateOrderStatus } from "@/app/actions/order-actions"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function SalesPage() {
   const { user } = useAuth()
@@ -38,12 +39,20 @@ export default function SalesPage() {
       if (!user?.id) return
 
       try {
+        console.log("Fetching sales for seller:", user.id)
+
         const { data, error } = await supabase
           .from("orders")
           .select(`
             *,
             books (*),
-            shipping_details (*)
+            shipping_details (*),
+            profiles!user_id (
+              id,
+              username,
+              full_name,
+              avatar_url
+            )
           `)
           .eq("seller_id", user.id)
           .order("created_at", { ascending: false })
@@ -53,6 +62,7 @@ export default function SalesPage() {
           return
         }
 
+        console.log("Fetched sales:", data)
         setOrders(data || [])
       } catch (error) {
         console.error("Error in fetchOrders:", error)
@@ -61,7 +71,9 @@ export default function SalesPage() {
       }
     }
 
-    fetchOrders()
+    if (user?.id) {
+      fetchOrders()
+    }
   }, [user, supabase])
 
   const getStatusIcon = (status) => {
@@ -249,6 +261,17 @@ export default function SalesPage() {
                             {getStatusBadge(order.status)}
                           </div>
                           <p className="text-sm text-gray-500">By {order.books?.author}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-1.5">
+                              <User className="h-3.5 w-3.5 text-gray-500" />
+                              <span className="text-sm text-gray-500">
+                                Purchased by{" "}
+                                <a href={`/users/${order.profiles?.id}`} className="text-primary hover:underline">
+                                  {order.profiles?.full_name || order.profiles?.username || "Anonymous User"}
+                                </a>
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="font-medium">${Number.parseFloat(order.amount).toFixed(2)}</p>
@@ -333,6 +356,17 @@ export default function SalesPage() {
                             {getStatusBadge(order.status)}
                           </div>
                           <p className="text-sm text-gray-500">By {order.books?.author}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-1.5">
+                              <User className="h-3.5 w-3.5 text-gray-500" />
+                              <span className="text-sm text-gray-500">
+                                Purchased by{" "}
+                                <a href={`/users/${order.profiles?.id}`} className="text-primary hover:underline">
+                                  {order.profiles?.full_name || order.profiles?.username || "Anonymous User"}
+                                </a>
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="font-medium">${Number.parseFloat(order.amount).toFixed(2)}</p>
@@ -415,6 +449,17 @@ export default function SalesPage() {
                             {getStatusBadge(order.status)}
                           </div>
                           <p className="text-sm text-gray-500">By {order.books?.author}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center gap-1.5">
+                              <User className="h-3.5 w-3.5 text-gray-500" />
+                              <span className="text-sm text-gray-500">
+                                Purchased by{" "}
+                                <a href={`/users/${order.profiles?.id}`} className="text-primary hover:underline">
+                                  {order.profiles?.full_name || order.profiles?.username || "Anonymous User"}
+                                </a>
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="font-medium">${Number.parseFloat(order.amount).toFixed(2)}</p>
@@ -483,6 +528,30 @@ export default function SalesPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {selectedOrder?.profiles && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-md">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={selectedOrder.profiles.avatar_url || "/placeholder.svg"}
+                    alt={selectedOrder.profiles.username}
+                  />
+                  <AvatarFallback>
+                    {selectedOrder.profiles.full_name
+                      ? selectedOrder.profiles.full_name.charAt(0)
+                      : selectedOrder.profiles.username
+                        ? selectedOrder.profiles.username.charAt(0)
+                        : "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">
+                    {selectedOrder.profiles.full_name || selectedOrder.profiles.username || "Anonymous User"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Buyer</p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <p className="text-sm font-medium">Current Status: {selectedOrder?.status}</p>
 
