@@ -181,7 +181,7 @@ export default function BooksPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => router.push(`/dashboard/books/${book.id}`)}>
                   View Details
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/books/edit/${book.id}`)}>
