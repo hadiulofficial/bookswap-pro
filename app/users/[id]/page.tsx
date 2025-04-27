@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
-import { BookOpen, Calendar, MapPin, Globe, ArrowLeft, Loader2, RefreshCw } from "lucide-react"
+import { BookOpen, Calendar, MapPin, Globe, ArrowLeft, Loader2, RefreshCw, Check } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -53,7 +53,7 @@ export default function UserProfilePage() {
         .from("books")
         .select("*")
         .eq("owner_id", id)
-        .eq("status", "Available")
+        .in("status", ["Available", "reserved"])
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -223,14 +223,17 @@ export default function UserProfilePage() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {books.map((book) => (
-                        <Card key={book.id} className="overflow-hidden">
+                        <Card
+                          key={book.id}
+                          className={`overflow-hidden ${book.status === "reserved" && book.listing_type === "Donate" ? "opacity-75" : ""}`}
+                        >
                           <div className="relative h-48 bg-gray-100 dark:bg-gray-700">
                             {book.cover_image ? (
                               <Image
                                 src={book.cover_image || "/placeholder.svg"}
                                 alt={book.title}
                                 fill
-                                className="object-cover"
+                                className={`object-cover ${book.status === "reserved" && book.listing_type === "Donate" ? "opacity-75 grayscale-[30%]" : ""}`}
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                               />
                             ) : (
@@ -250,6 +253,13 @@ export default function UserProfilePage() {
                             >
                               {book.listing_type}
                             </Badge>
+
+                            {/* Donated badge */}
+                            {book.status === "reserved" && book.listing_type === "Donate" && (
+                              <Badge className="absolute top-2 left-2 z-10 bg-green-500 hover:bg-green-600">
+                                <Check className="h-3 w-3 mr-1" /> Donated
+                              </Badge>
+                            )}
                           </div>
                           <CardHeader>
                             <CardTitle className="line-clamp-1">{book.title}</CardTitle>
@@ -268,17 +278,23 @@ export default function UserProfilePage() {
                           </CardContent>
                           <CardFooter>
                             {user ? (
-                              <Button className="w-full">
-                                {book.listing_type === "Exchange" ? (
-                                  <>
-                                    <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
-                                  </>
-                                ) : book.listing_type === "Sell" ? (
-                                  "Purchase"
-                                ) : (
-                                  "Request Book"
-                                )}
-                              </Button>
+                              book.status === "reserved" && book.listing_type === "Donate" ? (
+                                <Button variant="outline" className="w-full" disabled>
+                                  <Check className="mr-2 h-4 w-4 text-green-500" /> Already Donated
+                                </Button>
+                              ) : (
+                                <Button className="w-full">
+                                  {book.listing_type === "Exchange" ? (
+                                    <>
+                                      <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
+                                    </>
+                                  ) : book.listing_type === "Sell" ? (
+                                    "Purchase"
+                                  ) : (
+                                    "Request Book"
+                                  )}
+                                </Button>
+                              )
                             ) : (
                               <Button asChild variant="outline" className="w-full">
                                 <Link href="/login">Sign in to interact</Link>

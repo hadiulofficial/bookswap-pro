@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRightIcon,
   MoreHorizontal,
+  Check,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
@@ -552,13 +553,15 @@ export default function PublicBooksPage() {
                         className="overflow-hidden group transition-all duration-200 hover:shadow-md cursor-pointer"
                         onClick={() => navigateToBookDetails(book.id)}
                       >
-                        <div className="relative h-48 bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                        <div
+                          className={`relative h-48 bg-gray-100 dark:bg-gray-700 ${book.status === "reserved" && book.listing_type === "Donate" ? "opacity-75 grayscale-[30%]" : ""}`}
+                        >
                           {book.cover_image ? (
                             <Image
                               src={book.cover_image || "/placeholder.svg"}
                               alt={book.title}
                               fill
-                              className="object-cover transition-transform duration-300 group-hover:scale-105"
+                              className={`object-cover transition-transform duration-300 group-hover:scale-105 ${book.status === "reserved" && book.listing_type === "Donate" ? "opacity-75" : ""}`}
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             />
                           ) : (
@@ -578,6 +581,14 @@ export default function PublicBooksPage() {
                           >
                             {book.listing_type}
                           </Badge>
+
+                          {/* Donated badge */}
+                          {book.status === "reserved" && book.listing_type === "Donate" && (
+                            <Badge className="absolute top-2 left-2 z-10 bg-green-500 hover:bg-green-600">
+                              <Check className="h-3 w-3 mr-1" /> Donated
+                            </Badge>
+                          )}
+
                           {user && (
                             <Button
                               size="icon"
@@ -586,7 +597,10 @@ export default function PublicBooksPage() {
                                 wishlistStatus[book.id] ? "text-red-500 bg-white/80" : "text-gray-500 bg-white/80"
                               } hover:text-red-500 hover:bg-white`}
                               onClick={(e) => handleWishlistToggle(e, book.id)}
-                              disabled={wishlistLoading[book.id]}
+                              disabled={
+                                wishlistLoading[book.id] ||
+                                (book.status === "reserved" && book.listing_type === "Donate")
+                              }
                             >
                               {wishlistLoading[book.id] ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -633,12 +647,18 @@ export default function PublicBooksPage() {
                           </p>
                         </CardContent>
                         <CardFooter className="pt-0">
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-between group-hover:bg-emerald-50 group-hover:text-emerald-600"
-                          >
-                            View Details <ChevronRight className="h-4 w-4 ml-2" />
-                          </Button>
+                          {book.status === "reserved" && book.listing_type === "Donate" ? (
+                            <Button variant="outline" className="w-full justify-between" disabled>
+                              Already Donated <Check className="h-4 w-4 ml-2 text-green-500" />
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              className="w-full justify-between group-hover:bg-emerald-50 group-hover:text-emerald-600"
+                            >
+                              View Details <ChevronRight className="h-4 w-4 ml-2" />
+                            </Button>
+                          )}
                         </CardFooter>
                       </Card>
                     ))}
