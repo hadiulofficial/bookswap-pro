@@ -47,7 +47,7 @@ export async function requestDonatedBook(userId: string, bookId: string, message
     // Check if the user has already requested this book
     const { data: existingRequest, error: checkError } = await supabase
       .from("book_requests")
-      .select("id")
+      .select("id, status")
       .eq("user_id", userId)
       .eq("book_id", bookId)
       .maybeSingle()
@@ -58,7 +58,19 @@ export async function requestDonatedBook(userId: string, bookId: string, message
     }
 
     if (existingRequest) {
-      return { success: false, error: "You have already requested this book" }
+      // If there's an existing request that's been rejected, allow a new request
+      if (existingRequest.status === "rejected") {
+        // Continue with creating a new request
+        console.log("Previous request was rejected, allowing new request")
+      } else {
+        return {
+          success: false,
+          error:
+            existingRequest.status === "approved"
+              ? "Your request for this book has already been approved"
+              : "You have already requested this book",
+        }
+      }
     }
 
     // Get requester's name for the notification
@@ -112,9 +124,14 @@ export async function requestDonatedBook(userId: string, bookId: string, message
   }
 }
 
-// Rest of the file remains unchanged
 export async function getBookRequests(userId: string, status?: string) {
   try {
+    if (!userId) {
+      console.error("No user ID provided for getBookRequests")
+      return []
+    }
+
+    console.log("Getting book requests for owner:", userId)
     const supabase = createServerSupabaseClient()
 
     let query = supabase
@@ -137,6 +154,7 @@ export async function getBookRequests(userId: string, status?: string) {
       return []
     }
 
+    console.log(`Found ${data?.length || 0} book requests for owner ${userId}`)
     return data || []
   } catch (error) {
     console.error("Exception fetching book requests:", error)
@@ -146,6 +164,12 @@ export async function getBookRequests(userId: string, status?: string) {
 
 export async function getUserRequests(userId: string, status?: string) {
   try {
+    if (!userId) {
+      console.error("No user ID provided for getUserRequests")
+      return []
+    }
+
+    console.log("Getting user requests for requester:", userId)
     const supabase = createServerSupabaseClient()
 
     let query = supabase
@@ -168,6 +192,7 @@ export async function getUserRequests(userId: string, status?: string) {
       return []
     }
 
+    console.log(`Found ${data?.length || 0} user requests for requester ${userId}`)
     return data || []
   } catch (error) {
     console.error("Exception fetching user requests:", error)
@@ -177,6 +202,11 @@ export async function getUserRequests(userId: string, status?: string) {
 
 export async function updateRequestStatus(requestId: string, status: "approved" | "rejected", userId: string) {
   try {
+    if (!userId || !requestId) {
+      return { success: false, error: "Missing required information" }
+    }
+
+    console.log(`Updating request ${requestId} to ${status} by user ${userId}`)
     const supabase = createServerSupabaseClient()
 
     // Check if the request exists and belongs to the user

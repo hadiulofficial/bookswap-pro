@@ -8,7 +8,7 @@ import { DashboardTitle } from "@/components/dashboard/title"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, CheckCircle, XCircle, Calendar, Clock, Book } from "lucide-react"
+import { Loader2, CheckCircle, XCircle, Calendar, Clock, Book, RefreshCw } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -19,6 +19,7 @@ export default function RequestsPage() {
   const [incomingRequests, setIncomingRequests] = useState<any[]>([])
   const [outgoingRequests, setOutgoingRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
@@ -31,10 +32,14 @@ export default function RequestsPage() {
     if (!user) return
 
     setLoading(true)
+    console.log("Fetching requests for user:", user.id)
 
     try {
       const incoming = await getBookRequests(user.id)
       const outgoing = await getUserRequests(user.id)
+
+      console.log("Incoming requests:", incoming.length)
+      console.log("Outgoing requests:", outgoing.length)
 
       setIncomingRequests(incoming)
       setOutgoingRequests(outgoing)
@@ -48,6 +53,19 @@ export default function RequestsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRefresh = async () => {
+    if (!user || refreshing) return
+
+    setRefreshing(true)
+    await fetchRequests()
+    setRefreshing(false)
+
+    toast({
+      title: "Refreshed",
+      description: "Request list has been updated.",
+    })
   }
 
   const handleApprove = async (requestId: string) => {
@@ -126,13 +144,13 @@ export default function RequestsPage() {
         )
       case "approved":
         return (
-          <Badge variant="success">
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             <CheckCircle className="h-3 w-3 mr-1" /> Approved
           </Badge>
         )
       case "rejected":
         return (
-          <Badge variant="destructive">
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
             <XCircle className="h-3 w-3 mr-1" /> Rejected
           </Badge>
         )
@@ -152,12 +170,28 @@ export default function RequestsPage() {
 
   return (
     <div className="p-4 md:p-6">
-      <DashboardTitle>Book Requests</DashboardTitle>
+      <div className="flex justify-between items-center mb-6">
+        <DashboardTitle>Book Requests</DashboardTitle>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing || loading}
+          className="flex items-center gap-1"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
 
       <Tabs defaultValue="incoming" className="mt-6">
         <TabsList className="mb-4">
-          <TabsTrigger value="incoming">Incoming Requests</TabsTrigger>
-          <TabsTrigger value="outgoing">Your Requests</TabsTrigger>
+          <TabsTrigger value="incoming">
+            Incoming Requests {incomingRequests.length > 0 && `(${incomingRequests.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="outgoing">
+            Your Requests {outgoingRequests.length > 0 && `(${outgoingRequests.length})`}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="incoming">
@@ -179,12 +213,12 @@ export default function RequestsPage() {
                     <div className="flex justify-between items-start mb-2">
                       <Link href={`/books/${request.book_id}`}>
                         <CardTitle className="text-lg hover:text-emerald-600 hover:underline">
-                          {request.books.title}
+                          {request.books?.title || "Book Title"}
                         </CardTitle>
                       </Link>
                       {getStatusBadge(request.status)}
                     </div>
-                    <CardDescription>By {request.books.author}</CardDescription>
+                    <CardDescription>By {request.books?.author || "Unknown Author"}</CardDescription>
                   </CardHeader>
 
                   <CardContent className="pt-4">
@@ -270,12 +304,12 @@ export default function RequestsPage() {
                     <div className="flex justify-between items-start mb-2">
                       <Link href={`/books/${request.book_id}`}>
                         <CardTitle className="text-lg hover:text-emerald-600 hover:underline">
-                          {request.books.title}
+                          {request.books?.title || "Book Title"}
                         </CardTitle>
                       </Link>
                       {getStatusBadge(request.status)}
                     </div>
-                    <CardDescription>By {request.books.author}</CardDescription>
+                    <CardDescription>By {request.books?.author || "Unknown Author"}</CardDescription>
                   </CardHeader>
 
                   <CardContent>
