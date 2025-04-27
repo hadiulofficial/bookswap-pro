@@ -35,18 +35,36 @@ export default function PurchasesPage() {
           .from("orders")
           .select(`
             *,
-            books:book_id(*),
-            shipping_details:shipping_detail_id(*),
-            seller:seller_id(id, email, profiles:id(full_name, username))
+            books(*),
+            seller:seller_id(id, email, profiles(*))
           `)
-          .eq("buyer_id", user.id)
+          .eq("user_id", user.id)
           .order("created_at", { ascending: false })
 
         if (ordersError) {
           console.error("Error fetching purchases:", ordersError)
           setPurchases([])
         } else {
-          setPurchases(orders || [])
+          // Fetch shipping details for each order
+          if (orders && orders.length > 0) {
+            const ordersWithShipping = await Promise.all(
+              orders.map(async (order) => {
+                const { data: shippingData } = await supabase
+                  .from("shipping_details")
+                  .select("*")
+                  .eq("order_id", order.id)
+                  .single()
+
+                return {
+                  ...order,
+                  shipping_details: shippingData,
+                }
+              }),
+            )
+            setPurchases(ordersWithShipping || [])
+          } else {
+            setPurchases([])
+          }
         }
       } catch (error) {
         console.error("Error in fetchPurchases:", error)
@@ -253,8 +271,8 @@ export default function PurchasesPage() {
                             className="flex items-center gap-1 text-primary hover:underline"
                           >
                             Sold by:{" "}
-                            {purchase.seller?.profiles?.full_name ||
-                              purchase.seller?.profiles?.username ||
+                            {purchase.seller?.profiles[0]?.full_name ||
+                              purchase.seller?.profiles[0]?.username ||
                               purchase.seller?.email}
                             <ExternalLink className="h-3 w-3" />
                           </Link>
@@ -294,8 +312,13 @@ export default function PurchasesPage() {
                       variant="outline"
                       className="group"
                       onClick={() => {
-                        // Track order logic would go here
-                        console.log("Track order:", purchase.id)
+                        // Create a tracking URL (simulated)
+                        const trackingUrl = purchase.tracking_number
+                          ? `https://tracking.example.com/${purchase.tracking_number}`
+                          : `mailto:${purchase.seller?.email}?subject=Order%20${purchase.id.substring(0, 8)}%20Status&body=Hello,%0A%0AI%20would%20like%20to%20inquire%20about%20the%20status%20of%20my%20order%20${purchase.id.substring(0, 8)}.%0A%0AThank%20you.`
+
+                        // Open tracking URL or email
+                        window.open(trackingUrl, "_blank")
                       }}
                     >
                       Track Order

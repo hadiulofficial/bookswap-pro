@@ -141,3 +141,42 @@ export async function updateOrderStatus(orderId: string, status: string) {
 
   return { success: true }
 }
+
+export async function getOrdersByBuyerId(userId: string) {
+  const { data, error } = await supabase
+    .from("orders")
+    .select(`
+      *,
+      books (*),
+      shipping_details (*)
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching buyer orders:", error)
+    return { success: false, error: "Failed to fetch orders" }
+  }
+
+  return { success: true, orders: data }
+}
+
+export async function getOrdersBySellerId(sellerId: string) {
+  const { data, error } = await supabase
+    .from("orders")
+    .select(`
+      *,
+      books (*),
+      shipping_details (*),
+      buyer:user_id(id, email, profile:profiles(*))
+    `)
+    .eq("seller_id", sellerId)
+    .order("created_at", { ascending: false })
+
+  if (error) {
+    console.error("Error fetching seller orders:", error)
+    return { success: false, error: "Failed to fetch orders" }
+  }
+
+  return { success: true, orders: data }
+}

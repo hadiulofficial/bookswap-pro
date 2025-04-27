@@ -35,9 +35,8 @@ export default function SalesPage() {
           .from("orders")
           .select(`
             *,
-            books:book_id(*),
-            shipping_details:shipping_detail_id(*),
-            buyer:buyer_id(id, email, profiles:id(full_name, username))
+            books(*),
+            buyer:user_id(id, email, profiles(*))
           `)
           .eq("seller_id", user.id)
           .order("created_at", { ascending: false })
@@ -46,7 +45,26 @@ export default function SalesPage() {
           console.error("Error fetching sales:", ordersError)
           setSales([])
         } else {
-          setSales(orders || [])
+          // Fetch shipping details for each order
+          if (orders && orders.length > 0) {
+            const ordersWithShipping = await Promise.all(
+              orders.map(async (order) => {
+                const { data: shippingData } = await supabase
+                  .from("shipping_details")
+                  .select("*")
+                  .eq("order_id", order.id)
+                  .single()
+
+                return {
+                  ...order,
+                  shipping_details: shippingData,
+                }
+              }),
+            )
+            setSales(ordersWithShipping || [])
+          } else {
+            setSales([])
+          }
         }
       } catch (error) {
         console.error("Error in fetchSales:", error)
@@ -216,7 +234,9 @@ export default function SalesPage() {
                               href={`/users/${sale.buyer_id}`}
                               className="flex items-center gap-1 text-primary hover:underline mb-1"
                             >
-                              {sale.buyer?.profiles?.full_name || sale.buyer?.profiles?.username || sale.buyer?.email}
+                              {sale.buyer?.profiles[0]?.full_name ||
+                                sale.buyer?.profiles[0]?.username ||
+                                sale.buyer?.email}
                               <ExternalLink className="h-3 w-3" />
                             </Link>
                             <p className="text-muted-foreground text-xs">{sale.buyer?.email}</p>
