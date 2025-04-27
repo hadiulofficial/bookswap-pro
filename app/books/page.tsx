@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
@@ -15,7 +15,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Loader2, Search, BookOpen, Filter, Heart, ChevronRight, SlidersHorizontal, X } from "lucide-react"
+import {
+  Loader2,
+  Search,
+  BookOpen,
+  Filter,
+  Heart,
+  ChevronRight,
+  SlidersHorizontal,
+  X,
+  ChevronLeft,
+  ChevronRightIcon,
+  MoreHorizontal,
+} from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-actions"
@@ -23,7 +35,8 @@ import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-action
 export default function PublicBooksPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const [books, setBooks] = useState<any[]>([])
+  const [allBooks, setAllBooks] = useState<any[]>([]) // All fetched books
+  const [books, setBooks] = useState<any[]>([]) // Books for current page
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -33,14 +46,40 @@ export default function PublicBooksPage() {
   const [wishlistLoading, setWishlistLoading] = useState<Record<string, boolean>>({})
   const [isFilterOpen, setIsFilterOpen] = useState(false)
 
-  useEffect(() => {
-    fetchBooks()
-    if (user) {
-      fetchWishlistStatus()
-    }
-  }, [user])
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(9) // 9 items per page (3x3 grid on desktop)
+  const [totalPages, setTotalPages] = useState(1)
 
-  const fetchBooks = async () => {
+  // Function to scroll to top smoothly
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    })
+  }
+
+  // Calculate pagination based on all books
+  const updatePagination = useCallback(
+    (booksArray: any[]) => {
+      const total = Math.ceil(booksArray.length / itemsPerPage)
+      setTotalPages(total || 1) // Ensure at least 1 page even if no books
+
+      // Reset to page 1 if current page is now invalid
+      if (currentPage > total) {
+        setCurrentPage(1)
+      }
+
+      // Slice the books array for the current page
+      const startIndex = (currentPage - 1) * itemsPerPage
+      const endIndex = startIndex + itemsPerPage
+      setBooks(booksArray.slice(startIndex, endIndex))
+    },
+    [currentPage, itemsPerPage],
+  )
+
+  // Fetch books from API
+  const fetchBooks = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -69,14 +108,25 @@ export default function PublicBooksPage() {
         throw error
       }
 
-      setBooks(data || [])
+      setAllBooks(data || [])
+      updatePagination(data || [])
     } catch (err: any) {
       console.error("Error fetching books:", err)
       setError(err.message || "Failed to load books")
+      setAllBooks([])
+      setBooks([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, listingType, condition, updatePagination])
+
+  // Initial fetch
+  useEffect(() => {
+    fetchBooks()
+    if (user) {
+      fetchWishlistStatus()
+    }
+  }, [user, fetchBooks])
 
   const fetchWishlistStatus = async () => {
     if (!user) return
@@ -102,23 +152,28 @@ export default function PublicBooksPage() {
 
   const handleSearch = () => {
     if (!searchQuery.trim()) {
-      fetchBooks()
+      // Reset to all books if search is cleared
+      updatePagination(allBooks)
       return
     }
 
-    const filtered = books.filter(
+    const filtered = allBooks.filter(
       (book) =>
         book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (book.description && book.description.toLowerCase().includes(searchQuery.toLowerCase())),
     )
 
-    setBooks(filtered)
+    // Update pagination with filtered results
+    updatePagination(filtered)
+    // Reset to first page when searching
+    setCurrentPage(1)
   }
 
   const handleFilterChange = () => {
     fetchBooks()
     setIsFilterOpen(false) // Close mobile filter drawer after applying
+    setCurrentPage(1) // Reset to first page when filters change
   }
 
   const resetFilters = () => {
@@ -127,6 +182,7 @@ export default function PublicBooksPage() {
     setCondition(null)
     fetchBooks()
     setIsFilterOpen(false) // Close mobile filter drawer after resetting
+    setCurrentPage(1) // Reset to first page when filters reset
   }
 
   const getOwnerName = (book: any) => {
@@ -197,6 +253,126 @@ export default function PublicBooksPage() {
 
   const navigateToBookDetails = (bookId: string) => {
     router.push(`/books/${bookId}`)
+  }
+
+  // Handle page change
+  const changePage = (page: number) => {
+    if (page < 1 || page > totalPages) return
+    setCurrentPage(page)
+    scrollToTop()
+
+    // Update displayed books for the new page
+    const startIndex = (page - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    setBooks(allBooks.slice(startIndex, endIndex))
+  }
+
+  // Generate pagination buttons
+  const renderPaginationButtons = () => {
+    // For small number of pages, show all
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        <Button
+          key={page}
+          variant={currentPage === page ? "default" : "outline"}
+          size="icon"
+          className={`h-9 w-9 ${currentPage === page ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+          onClick={() => changePage(page)}
+        >
+          {page}
+        </Button>
+      ))
+    }
+
+    // For larger number of pages, show current, prev, next, first, last and ellipsis
+    const buttons = []
+
+    // First page
+    buttons.push(
+      <Button
+        key={1}
+        variant={currentPage === 1 ? "default" : "outline"}
+        size="icon"
+        className={`h-9 w-9 ${currentPage === 1 ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+        onClick={() => changePage(1)}
+      >
+        1
+      </Button>,
+    )
+
+    // Ellipsis or second page
+    if (currentPage > 3) {
+      buttons.push(
+        <Button key="ellipsis1" variant="outline" size="icon" className="h-9 w-9" disabled>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>,
+      )
+    } else if (totalPages > 1) {
+      buttons.push(
+        <Button
+          key={2}
+          variant={currentPage === 2 ? "default" : "outline"}
+          size="icon"
+          className={`h-9 w-9 ${currentPage === 2 ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+          onClick={() => changePage(2)}
+        >
+          2
+        </Button>,
+      )
+    }
+
+    // Current page (if not first or last)
+    if (currentPage !== 1 && currentPage !== totalPages) {
+      buttons.push(
+        <Button
+          key={currentPage}
+          variant="default"
+          size="icon"
+          className="h-9 w-9 bg-emerald-600 hover:bg-emerald-700"
+          onClick={() => changePage(currentPage)}
+        >
+          {currentPage}
+        </Button>,
+      )
+    }
+
+    // Ellipsis or second-to-last page
+    if (currentPage < totalPages - 2) {
+      buttons.push(
+        <Button key="ellipsis2" variant="outline" size="icon" className="h-9 w-9" disabled>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>,
+      )
+    } else if (totalPages > 2) {
+      buttons.push(
+        <Button
+          key={totalPages - 1}
+          variant={currentPage === totalPages - 1 ? "default" : "outline"}
+          size="icon"
+          className={`h-9 w-9 ${currentPage === totalPages - 1 ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+          onClick={() => changePage(totalPages - 1)}
+        >
+          {totalPages - 1}
+        </Button>,
+      )
+    }
+
+    // Last page
+    if (totalPages > 1) {
+      buttons.push(
+        <Button
+          key={totalPages}
+          variant={currentPage === totalPages ? "default" : "outline"}
+          size="icon"
+          className={`h-9 w-9 ${currentPage === totalPages ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+          onClick={() => changePage(totalPages)}
+        >
+          {totalPages}
+        </Button>,
+      )
+    }
+
+    return buttons
   }
 
   // Filter component that will be used in both sidebar and mobile drawer
@@ -354,7 +530,7 @@ export default function PublicBooksPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-4" />
                   <p className="text-gray-500">Loading books...</p>
                 </div>
-              ) : books.length === 0 ? (
+              ) : allBooks.length === 0 ? (
                 <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                   <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h2 className="text-xl font-medium mb-2">No books found</h2>
@@ -362,104 +538,148 @@ export default function PublicBooksPage() {
                   <Button onClick={resetFilters}>Reset Filters</Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {books.map((book) => (
-                    <Card
-                      key={book.id}
-                      className="overflow-hidden group transition-all duration-200 hover:shadow-md cursor-pointer"
-                      onClick={() => navigateToBookDetails(book.id)}
-                    >
-                      <div className="relative h-48 bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                        {book.cover_image ? (
-                          <Image
-                            src={book.cover_image || "/placeholder.svg"}
-                            alt={book.title}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <BookOpen className="h-12 w-12 text-gray-400" />
-                          </div>
-                        )}
-                        <Badge
-                          className="absolute top-2 right-2 z-10"
-                          variant={
-                            book.listing_type === "Exchange"
-                              ? "default"
-                              : book.listing_type === "Sell"
-                                ? "secondary"
-                                : "outline"
-                          }
-                        >
-                          {book.listing_type}
-                        </Badge>
-                        {user && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className={`absolute top-2 left-2 z-10 h-8 w-8 rounded-full ${
-                              wishlistStatus[book.id] ? "text-red-500 bg-white/80" : "text-gray-500 bg-white/80"
-                            } hover:text-red-500 hover:bg-white`}
-                            onClick={(e) => handleWishlistToggle(e, book.id)}
-                            disabled={wishlistLoading[book.id]}
+                <>
+                  {/* Results count */}
+                  <div className="mb-4 text-sm text-gray-500">
+                    Showing {books.length} of {allBooks.length} books
+                  </div>
+
+                  {/* Books grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {books.map((book) => (
+                      <Card
+                        key={book.id}
+                        className="overflow-hidden group transition-all duration-200 hover:shadow-md cursor-pointer"
+                        onClick={() => navigateToBookDetails(book.id)}
+                      >
+                        <div className="relative h-48 bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                          {book.cover_image ? (
+                            <Image
+                              src={book.cover_image || "/placeholder.svg"}
+                              alt={book.title}
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover:scale-105"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center">
+                              <BookOpen className="h-12 w-12 text-gray-400" />
+                            </div>
+                          )}
+                          <Badge
+                            className="absolute top-2 right-2 z-10"
+                            variant={
+                              book.listing_type === "Exchange"
+                                ? "default"
+                                : book.listing_type === "Sell"
+                                  ? "secondary"
+                                  : "outline"
+                            }
                           >
-                            {wishlistLoading[book.id] ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Heart
-                                className={`h-4 w-4 ${wishlistStatus[book.id] ? "fill-current" : ""}`}
-                                aria-label={wishlistStatus[book.id] ? "Remove from wishlist" : "Add to wishlist"}
-                              />
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="line-clamp-1 group-hover:text-emerald-600 transition-colors">
-                          {book.title}
-                        </CardTitle>
-                        <p className="text-sm text-gray-500">By {book.author}</p>
-                      </CardHeader>
-                      <CardContent className="pb-2">
-                        {book.description && (
-                          <p className="text-sm text-gray-500 line-clamp-2 mb-2">{book.description}</p>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="outline">{book.condition}</Badge>
-                          {book.listing_type === "Sell" && book.price && (
-                            <Badge variant="secondary" className="font-medium">
-                              ${book.price.toFixed(2)}
-                            </Badge>
+                            {book.listing_type}
+                          </Badge>
+                          {user && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className={`absolute top-2 left-2 z-10 h-8 w-8 rounded-full ${
+                                wishlistStatus[book.id] ? "text-red-500 bg-white/80" : "text-gray-500 bg-white/80"
+                              } hover:text-red-500 hover:bg-white`}
+                              onClick={(e) => handleWishlistToggle(e, book.id)}
+                              disabled={wishlistLoading[book.id]}
+                            >
+                              {wishlistLoading[book.id] ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Heart
+                                  className={`h-4 w-4 ${wishlistStatus[book.id] ? "fill-current" : ""}`}
+                                  aria-label={wishlistStatus[book.id] ? "Remove from wishlist" : "Add to wishlist"}
+                                />
+                              )}
+                            </Button>
                           )}
                         </div>
-                        <p className="text-xs text-gray-400 mt-3">
-                          Listed by{" "}
-                          {book.profiles?.id ? (
-                            <Link
-                              href={`/users/${book.profiles.id}`}
-                              className="text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
-                              onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the username
-                            >
-                              {getOwnerName(book)}
-                            </Link>
-                          ) : (
-                            getOwnerName(book)
+                        <CardHeader className="pb-2">
+                          <CardTitle className="line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                            {book.title}
+                          </CardTitle>
+                          <p className="text-sm text-gray-500">By {book.author}</p>
+                        </CardHeader>
+                        <CardContent className="pb-2">
+                          {book.description && (
+                            <p className="text-sm text-gray-500 line-clamp-2 mb-2">{book.description}</p>
                           )}
-                        </p>
-                      </CardContent>
-                      <CardFooter className="pt-0">
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="outline">{book.condition}</Badge>
+                            {book.listing_type === "Sell" && book.price && (
+                              <Badge variant="secondary" className="font-medium">
+                                ${book.price.toFixed(2)}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-3">
+                            Listed by{" "}
+                            {book.profiles?.id ? (
+                              <Link
+                                href={`/users/${book.profiles.id}`}
+                                className="text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
+                                onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the username
+                              >
+                                {getOwnerName(book)}
+                              </Link>
+                            ) : (
+                              getOwnerName(book)
+                            )}
+                          </p>
+                        </CardContent>
+                        <CardFooter className="pt-0">
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-between group-hover:bg-emerald-50 group-hover:text-emerald-600"
+                          >
+                            View Details <ChevronRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="mt-8 flex justify-center">
+                      <div className="flex items-center space-x-2">
                         <Button
-                          variant="ghost"
-                          className="w-full justify-between group-hover:bg-emerald-50 group-hover:text-emerald-600"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => changePage(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          aria-label="Previous page"
                         >
-                          View Details <ChevronRight className="h-4 w-4 ml-2" />
+                          <ChevronLeft className="h-4 w-4" />
                         </Button>
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </div>
+
+                        <div className="hidden sm:flex items-center space-x-2">{renderPaginationButtons()}</div>
+
+                        {/* Mobile pagination indicator */}
+                        <div className="sm:hidden flex items-center">
+                          <span className="text-sm">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                        </div>
+
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => changePage(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          aria-label="Next page"
+                        >
+                          <ChevronRightIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
