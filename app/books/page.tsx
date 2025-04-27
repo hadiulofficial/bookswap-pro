@@ -15,6 +15,7 @@ import { Loader2, Search, BookOpen, RefreshCw, Filter, Heart } from "lucide-reac
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-actions"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function PublicBooksPage() {
   const { user } = useAuth()
@@ -26,6 +27,7 @@ export default function PublicBooksPage() {
   const [condition, setCondition] = useState<string | null>(null)
   const [wishlistStatus, setWishlistStatus] = useState<Record<string, boolean>>({})
   const [wishlistLoading, setWishlistLoading] = useState<Record<string, boolean>>({})
+  const [hideOwnListings, setHideOwnListings] = useState(false)
 
   useEffect(() => {
     fetchBooks()
@@ -39,7 +41,10 @@ export default function PublicBooksPage() {
       setLoading(true)
       setError(null)
 
-      let query = supabase.from("books").select("*, profiles(id, username, full_name)").eq("status", "Available")
+      let query = supabase
+        .from("books")
+        .select("*, profiles(id, username, full_name), owner_id")
+        .eq("status", "Available")
 
       if (listingType) {
         query = query.eq("listing_type", listingType)
@@ -103,13 +108,18 @@ export default function PublicBooksPage() {
   }
 
   const handleFilterChange = () => {
-    fetchBooks()
+    fetchBooks().then(() => {
+      if (user && hideOwnListings) {
+        setBooks((prevBooks) => prevBooks.filter((book) => book.owner_id !== user.id))
+      }
+    })
   }
 
   const resetFilters = () => {
     setSearchQuery("")
     setListingType(null)
     setCondition(null)
+    setHideOwnListings(false)
     fetchBooks()
   }
 
@@ -233,6 +243,25 @@ export default function PublicBooksPage() {
                     <SelectItem value="Acceptable">Acceptable</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                {user && (
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="hideOwn"
+                      checked={hideOwnListings}
+                      onCheckedChange={(checked) => {
+                        setHideOwnListings(checked === true)
+                      }}
+                    />
+                    <label
+                      htmlFor="hideOwn"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Hide my listings
+                    </label>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-end mt-4 gap-2">
@@ -368,17 +397,23 @@ export default function PublicBooksPage() {
                   </CardContent>
                   <CardFooter>
                     {user ? (
-                      <Button className="w-full">
-                        {book.listing_type === "Exchange" ? (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
-                          </>
-                        ) : book.listing_type === "Sell" ? (
-                          "Purchase"
-                        ) : (
-                          "Request Book"
-                        )}
-                      </Button>
+                      book.owner_id === user.id ? (
+                        <Button asChild variant="outline" className="w-full">
+                          <Link href={`/dashboard/books/edit/${book.id}`}>Manage Listing</Link>
+                        </Button>
+                      ) : (
+                        <Button className="w-full">
+                          {book.listing_type === "Exchange" ? (
+                            <>
+                              <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
+                            </>
+                          ) : book.listing_type === "Sell" ? (
+                            "Purchase"
+                          ) : (
+                            "Request Book"
+                          )}
+                        </Button>
+                      )
                     ) : (
                       <Button asChild variant="outline" className="w-full">
                         <Link href="/login">Sign in to interact</Link>
