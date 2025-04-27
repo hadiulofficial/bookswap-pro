@@ -68,11 +68,6 @@ export function DashboardSidebar() {
       icon: <BookOpen className="h-5 w-5" />,
     },
     {
-      title: "Swap Requests",
-      href: "/dashboard/swap-requests",
-      icon: <RefreshCw className="h-5 w-5" />,
-    },
-    {
       href: "/dashboard/swaps",
       title: "Book Swaps",
       icon: <RefreshCw className="h-5 w-5" />,

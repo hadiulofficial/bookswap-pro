@@ -142,10 +142,24 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_constraint_info: {
+        Args: {
+          table_name: string
+          column_name: string
+        }
+        Returns: {
+          constraint_name: string
+          constraint_type: string
+          check_clause: string
+        }[]
+      }
+      get_listing_type_values: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      book_condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
     }
     CompositeTypes: {
       [_ in never]: never

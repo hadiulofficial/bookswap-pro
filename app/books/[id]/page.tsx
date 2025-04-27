@@ -28,8 +28,6 @@ import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
 import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-actions"
-import { SwapRequestModal } from "@/components/swap-request-modal"
-import { checkExistingSwapRequest } from "@/app/actions/swap-actions"
 
 export default function BookDetailsPage() {
   const router = useRouter()
@@ -44,9 +42,6 @@ export default function BookDetailsPage() {
   const [error, setError] = useState<string | null>(null)
   const [inWishlist, setInWishlist] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
-  const [swapModalOpen, setSwapModalOpen] = useState(false)
-  const [hasExistingSwapRequest, setHasExistingSwapRequest] = useState(false)
-  const [checkingSwapRequest, setCheckingSwapRequest] = useState(false)
 
   useEffect(() => {
     fetchBookDetails()
@@ -54,12 +49,6 @@ export default function BookDetailsPage() {
       checkWishlistStatus()
     }
   }, [bookId, user])
-
-  useEffect(() => {
-    if (user && book && book.listing_type.toLowerCase() === "swap" && book.owner_id !== user.id) {
-      checkExistingSwap()
-    }
-  }, [user, book])
 
   const fetchBookDetails = async () => {
     try {
@@ -124,20 +113,6 @@ export default function BookDetailsPage() {
     }
   }
 
-  const checkExistingSwap = async () => {
-    if (!user || !book) return
-
-    try {
-      setCheckingSwapRequest(true)
-      const result = await checkExistingSwapRequest(bookId, user.id)
-      setHasExistingSwapRequest(result.exists)
-    } catch (err) {
-      console.error("Error checking existing swap request:", err)
-    } finally {
-      setCheckingSwapRequest(false)
-    }
-  }
-
   const handleWishlistToggle = async () => {
     if (!user) {
       toast({
@@ -194,19 +169,6 @@ export default function BookDetailsPage() {
     }
   }
 
-  const handleSwapRequest = () => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to request a book swap",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSwapModalOpen(true)
-  }
-
   const getOwnerName = () => {
     if (owner?.full_name) return owner.full_name
     if (owner?.username) return owner.username
@@ -214,27 +176,16 @@ export default function BookDetailsPage() {
   }
 
   const getListingIcon = () => {
-    switch (book?.listing_type.toLowerCase()) {
-      case "swap":
-      case "exchange":
+    switch (book?.listing_type) {
+      case "Exchange":
         return <RefreshCw className="h-4 w-4" />
-      case "sale":
-      case "sell":
+      case "Sell":
         return <DollarSign className="h-4 w-4" />
-      case "donation":
-      case "donate":
+      case "Donate":
         return <Gift className="h-4 w-4" />
       default:
         return <BookOpen className="h-4 w-4" />
     }
-  }
-
-  const getListingType = () => {
-    const type = book?.listing_type.toLowerCase()
-    if (type === "swap") return "Exchange"
-    if (type === "sale") return "Sale"
-    if (type === "donation") return "Donation"
-    return book?.listing_type
   }
 
   return (
@@ -302,15 +253,15 @@ export default function BookDetailsPage() {
                     <div className="flex flex-wrap gap-2">
                       <Badge
                         variant={
-                          book.listing_type.toLowerCase() === "swap"
+                          book.listing_type === "Exchange"
                             ? "default"
-                            : book.listing_type.toLowerCase() === "sale"
+                            : book.listing_type === "Sell"
                               ? "secondary"
                               : "outline"
                         }
                         className="text-xs px-2 py-0.5"
                       >
-                        {getListingIcon()} <span className="ml-1">{getListingType()}</span>
+                        {getListingIcon()} <span className="ml-1">{book.listing_type}</span>
                       </Badge>
 
                       <Badge variant="outline" className="text-xs px-2 py-0.5">
@@ -327,7 +278,7 @@ export default function BookDetailsPage() {
                     <h1 className="text-2xl md:text-3xl font-bold leading-tight">{book.title}</h1>
                     <p className="text-lg text-gray-600 dark:text-gray-300">By {book.author}</p>
 
-                    {book.listing_type.toLowerCase() === "sale" && book.price && (
+                    {book.listing_type === "Sell" && book.price && (
                       <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">
                         ${book.price.toFixed(2)}
                       </div>
@@ -383,31 +334,21 @@ export default function BookDetailsPage() {
                   <div className="flex flex-wrap gap-3 mt-auto">
                     {user ? (
                       <>
-                        {book.owner_id !== user.id ? (
+                        {book.user_id !== user.id ? (
                           <>
-                            {book.listing_type.toLowerCase() === "swap" && (
-                              <Button
-                                size="lg"
-                                className="flex-1 md:flex-none"
-                                onClick={handleSwapRequest}
-                                disabled={checkingSwapRequest || hasExistingSwapRequest}
-                              >
-                                {checkingSwapRequest ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RefreshCw className="mr-2 h-4 w-4" />
-                                )}
-                                {hasExistingSwapRequest ? "Swap Requested" : "Request Swap"}
+                            {book.listing_type === "Exchange" && (
+                              <Button size="lg" className="flex-1 md:flex-none">
+                                <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
                               </Button>
                             )}
 
-                            {book.listing_type.toLowerCase() === "sale" && (
+                            {book.listing_type === "Sell" && (
                               <Button size="lg" className="flex-1 md:flex-none">
                                 <ShoppingCart className="mr-2 h-4 w-4" /> Purchase
                               </Button>
                             )}
 
-                            {book.listing_type.toLowerCase() === "donation" && (
+                            {book.listing_type === "Donate" && (
                               <Button size="lg" className="flex-1 md:flex-none">
                                 <Gift className="mr-2 h-4 w-4" /> Request Book
                               </Button>
@@ -457,7 +398,7 @@ export default function BookDetailsPage() {
                       <Tag className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
                         <p className="text-xs font-medium text-gray-500">Listing Type</p>
-                        <p className="text-sm">{getListingType()}</p>
+                        <p className="text-sm">{book.listing_type}</p>
                       </div>
                     </div>
 
@@ -530,22 +471,6 @@ export default function BookDetailsPage() {
         )}
       </main>
       <Footer />
-
-      {/* Swap Request Modal */}
-      {user && book && (
-        <SwapRequestModal
-          isOpen={swapModalOpen}
-          onClose={() => setSwapModalOpen(false)}
-          requestedBook={{
-            id: book.id,
-            title: book.title,
-            author: book.author,
-            cover_image: book.cover_image,
-            owner_id: book.owner_id,
-          }}
-          userId={user.id}
-        />
-      )}
     </div>
   )
 }

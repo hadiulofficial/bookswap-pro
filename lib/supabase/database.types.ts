@@ -131,38 +131,6 @@ export interface Database {
           created_at?: string
         }
       }
-      swap_requests: {
-        Row: {
-          id: string
-          requested_book_id: string
-          offered_book_id: string
-          requester_id: string
-          owner_id: string
-          status: "pending" | "accepted" | "rejected"
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          requested_book_id: string
-          offered_book_id: string
-          requester_id: string
-          owner_id: string
-          status?: "pending" | "accepted" | "rejected"
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          requested_book_id?: string
-          offered_book_id?: string
-          requester_id?: string
-          owner_id?: string
-          status?: "pending" | "accepted" | "rejected"
-          created_at?: string
-          updated_at?: string
-        }
-      }
     }
   }
 }
