@@ -19,6 +19,7 @@ import {
   X,
   Gift,
   ShoppingBag,
+  DollarSign,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -73,6 +74,11 @@ export function DashboardSidebar() {
       href: "/dashboard/purchases",
       title: "Purchases",
       icon: <ShoppingBag className="h-5 w-5" />,
+    },
+    {
+      href: "/dashboard/sales",
+      title: "Sales",
+      icon: <DollarSign className="h-5 w-5" />,
     },
     {
       href: "/dashboard/swaps",
