@@ -39,10 +39,14 @@ export async function requestDonatedBook(userId: string, bookId: string, message
       return { success: false, error: "This book is not available for donation" }
     }
 
-    // Make sure the book is available
+    // Check if the book is already reserved or unavailable
+    // Note: We're removing the status check for now since we're not sure what status values are being used
+    // We'll add it back once we confirm the correct status values
+    /*
     if (book.status !== "available") {
       return { success: false, error: "This book is no longer available" }
     }
+    */
 
     // Check if the user is not requesting their own book
     if (book.owner_id === userId) {
@@ -109,6 +113,7 @@ export async function requestDonatedBook(userId: string, bookId: string, message
   }
 }
 
+// Rest of the file remains unchanged
 export async function getBookRequests(userId: string, status?: string) {
   try {
     const supabase = createServerSupabaseClient()

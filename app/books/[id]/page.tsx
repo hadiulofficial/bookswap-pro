@@ -43,6 +43,7 @@ export default function BookDetailsPage() {
   const [error, setError] = useState<string | null>(null)
   const [inWishlist, setInWishlist] = useState(false)
   const [wishlistLoading, setWishlistLoading] = useState(false)
+  const [requestLoading, setRequestLoading] = useState(false)
 
   useEffect(() => {
     fetchBookDetails()
@@ -70,6 +71,7 @@ export default function BookDetailsPage() {
         throw new Error("Book not found")
       }
 
+      console.log("Book data:", bookData) // Debug log
       setBook(bookData)
       setOwner(bookData.profiles)
 
@@ -167,6 +169,53 @@ export default function BookDetailsPage() {
       })
     } finally {
       setWishlistLoading(false)
+    }
+  }
+
+  const handleRequestBook = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to request this book",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setRequestLoading(true)
+
+    try {
+      // Show loading state
+      toast({
+        title: "Processing request",
+        description: "Please wait...",
+      })
+
+      console.log("Requesting book:", bookId, "for user:", user.id) // Debug log
+      const result = await requestDonatedBook(user.id, bookId)
+      console.log("Request result:", result) // Debug log
+
+      if (result.success) {
+        toast({
+          title: "Request Sent Successfully!",
+          description: "The book owner has been notified of your request.",
+        })
+      } else {
+        toast({
+          title: "Request Failed",
+          description: result.error || "An error occurred while sending your request.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error requesting book:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    } finally {
+      setRequestLoading(false)
     }
   }
 
@@ -335,7 +384,7 @@ export default function BookDetailsPage() {
                   <div className="flex flex-wrap gap-3 mt-auto">
                     {user ? (
                       <>
-                        {book.user_id !== user.id ? (
+                        {book.owner_id !== user.id ? (
                           <>
                             {book.listing_type === "Exchange" && (
                               <Button size="lg" className="flex-1 md:flex-none">
@@ -353,39 +402,15 @@ export default function BookDetailsPage() {
                               <Button
                                 size="lg"
                                 className="flex-1 md:flex-none"
-                                onClick={async () => {
-                                  if (!user) {
-                                    toast({
-                                      title: "Authentication required",
-                                      description: "Please sign in to request this book",
-                                      variant: "destructive",
-                                    })
-                                    return
-                                  }
-
-                                  // Show loading state
-                                  toast({
-                                    title: "Processing request",
-                                    description: "Please wait...",
-                                  })
-
-                                  const result = await requestDonatedBook(user.id, bookId)
-
-                                  if (result.success) {
-                                    toast({
-                                      title: "Request Sent Successfully!",
-                                      description: "The book owner has been notified of your request.",
-                                    })
-                                  } else {
-                                    toast({
-                                      title: "Request Failed",
-                                      description: result.error || "An error occurred while sending your request.",
-                                      variant: "destructive",
-                                    })
-                                  }
-                                }}
+                                onClick={handleRequestBook}
+                                disabled={requestLoading}
                               >
-                                <Gift className="mr-2 h-4 w-4" /> Request Book
+                                {requestLoading ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Gift className="mr-2 h-4 w-4" />
+                                )}
+                                {requestLoading ? "Sending Request..." : "Request Book"}
                               </Button>
                             )}
                           </>
