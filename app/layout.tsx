@@ -1,7 +1,6 @@
 import type React from "react"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
-import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata = {
   title: "BookSwap | Share Books, Connect Communities",
@@ -16,11 +15,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body>
-        <ThemeProvider defaultTheme="system">
-          <AuthProvider>{children}</AuthProvider>
-        </ThemeProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )

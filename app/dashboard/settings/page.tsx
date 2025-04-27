@@ -7,36 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { useTheme } from "@/components/theme-provider"
-import { useState, useEffect } from "react"
-import { toast } from "@/components/ui/use-toast"
 
 export default function SettingsPage() {
   const { user } = useAuth()
-  const { theme, setTheme } = useTheme()
-  const [selectedTheme, setSelectedTheme] = useState<string>(theme)
-  const [isSaving, setIsSaving] = useState(false)
-
-  useEffect(() => {
-    setSelectedTheme(theme)
-  }, [theme])
 
   if (!user) return null
-
-  const handleSaveSettings = () => {
-    setIsSaving(true)
-
-    // Save theme
-    setTheme(selectedTheme as "light" | "dark" | "system")
-
-    // Show success message
-    toast({
-      title: "Settings saved",
-      description: "Your settings have been saved successfully.",
-    })
-
-    setIsSaving(false)
-  }
 
   return (
     <div className="space-y-6">
@@ -57,48 +32,36 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
+                <h3 className="text-lg font-medium">Language</h3>
+                <p className="text-sm text-gray-500">Select your preferred language</p>
+                <select className="w-full p-2 border rounded-md">
+                  <option value="en">English</option>
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
                 <h3 className="text-lg font-medium">Theme</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Choose your preferred theme</p>
+                <p className="text-sm text-gray-500">Choose your preferred theme</p>
                 <div className="flex gap-4">
                   <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="light"
-                      name="theme"
-                      value="light"
-                      checked={selectedTheme === "light"}
-                      onChange={() => setSelectedTheme("light")}
-                    />
+                    <input type="radio" id="light" name="theme" defaultChecked />
                     <Label htmlFor="light">Light</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="dark"
-                      name="theme"
-                      value="dark"
-                      checked={selectedTheme === "dark"}
-                      onChange={() => setSelectedTheme("dark")}
-                    />
+                    <input type="radio" id="dark" name="theme" />
                     <Label htmlFor="dark">Dark</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="system"
-                      name="theme"
-                      value="system"
-                      checked={selectedTheme === "system"}
-                      onChange={() => setSelectedTheme("system")}
-                    />
+                    <input type="radio" id="system" name="theme" />
                     <Label htmlFor="system">System</Label>
                   </div>
                 </div>
               </div>
 
-              <Button onClick={handleSaveSettings} disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save Settings"}
-              </Button>
+              <Button>Save Settings</Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -116,7 +79,7 @@ export default function SettingsPage() {
                     <Label htmlFor="email-notifications" className="font-medium">
                       Email Notifications
                     </Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Receive updates via email</p>
+                    <p className="text-sm text-gray-500">Receive updates via email</p>
                   </div>
                   <Switch id="email-notifications" defaultChecked />
                 </div>
@@ -125,7 +88,7 @@ export default function SettingsPage() {
                     <Label htmlFor="swap-requests" className="font-medium">
                       Swap Requests
                     </Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Get notified about new swap requests</p>
+                    <p className="text-sm text-gray-500">Get notified about new swap requests</p>
                   </div>
                   <Switch id="swap-requests" defaultChecked />
                 </div>
@@ -134,7 +97,7 @@ export default function SettingsPage() {
                     <Label htmlFor="messages" className="font-medium">
                       Messages
                     </Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Get notified about new messages</p>
+                    <p className="text-sm text-gray-500">Get notified about new messages</p>
                   </div>
                   <Switch id="messages" defaultChecked />
                 </div>
@@ -143,9 +106,7 @@ export default function SettingsPage() {
                     <Label htmlFor="wishlist" className="font-medium">
                       Wishlist Matches
                     </Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Get notified when books on your wishlist become available
-                    </p>
+                    <p className="text-sm text-gray-500">Get notified when books on your wishlist become available</p>
                   </div>
                   <Switch id="wishlist" defaultChecked />
                 </div>
@@ -169,7 +130,7 @@ export default function SettingsPage() {
                     <Label htmlFor="public-profile" className="font-medium">
                       Public Profile
                     </Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Allow others to view your profile</p>
+                    <p className="text-sm text-gray-500">Allow others to view your profile</p>
                   </div>
                   <Switch id="public-profile" defaultChecked />
                 </div>
@@ -178,7 +139,7 @@ export default function SettingsPage() {
                     <Label htmlFor="show-location" className="font-medium">
                       Show Location
                     </Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Display your location on your profile</p>
+                    <p className="text-sm text-gray-500">Display your location on your profile</p>
                   </div>
                   <Switch id="show-location" defaultChecked />
                 </div>
@@ -187,7 +148,7 @@ export default function SettingsPage() {
                     <Label htmlFor="show-email" className="font-medium">
                       Show Email
                     </Label>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Display your email to other users</p>
+                    <p className="text-sm text-gray-500">Display your email to other users</p>
                   </div>
                   <Switch id="show-email" />
                 </div>
