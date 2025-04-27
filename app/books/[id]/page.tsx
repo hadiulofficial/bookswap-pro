@@ -28,6 +28,7 @@ import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
 import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-actions"
+import { requestDonatedBook } from "@/app/actions/book-request-actions"
 
 export default function BookDetailsPage() {
   const router = useRouter()
@@ -349,7 +350,41 @@ export default function BookDetailsPage() {
                             )}
 
                             {book.listing_type === "Donate" && (
-                              <Button size="lg" className="flex-1 md:flex-none">
+                              <Button
+                                size="lg"
+                                className="flex-1 md:flex-none"
+                                onClick={async () => {
+                                  if (!user) {
+                                    toast({
+                                      title: "Authentication required",
+                                      description: "Please sign in to request this book",
+                                      variant: "destructive",
+                                    })
+                                    return
+                                  }
+
+                                  // Show loading state
+                                  toast({
+                                    title: "Processing request",
+                                    description: "Please wait...",
+                                  })
+
+                                  const result = await requestDonatedBook(user.id, bookId)
+
+                                  if (result.success) {
+                                    toast({
+                                      title: "Request Sent Successfully!",
+                                      description: "The book owner has been notified of your request.",
+                                    })
+                                  } else {
+                                    toast({
+                                      title: "Request Failed",
+                                      description: result.error || "An error occurred while sending your request.",
+                                      variant: "destructive",
+                                    })
+                                  }
+                                }}
+                              >
                                 <Gift className="mr-2 h-4 w-4" /> Request Book
                               </Button>
                             )}

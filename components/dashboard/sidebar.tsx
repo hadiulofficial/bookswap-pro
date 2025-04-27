@@ -92,6 +92,11 @@ export function DashboardSidebar() {
       title: "Settings",
       icon: <Settings className="h-5 w-5" />,
     },
+    {
+      title: "Book Requests",
+      href: "/dashboard/requests",
+      icon: <MessageSquare className="h-5 w-5" />,
+    },
   ]
 
   // Mobile sidebar
