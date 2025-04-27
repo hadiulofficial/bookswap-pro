@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Create Supabase client
+    // Create Supabase client with admin privileges
     const supabase = createServerSupabaseClient()
 
     // Create a unique ID for the book
@@ -23,10 +23,10 @@ export async function POST(request: Request) {
       title: data.title,
       author: data.author,
       condition: data.condition || "Good",
-      listing_type: data.listing_type || "exchange", // Changed from "swap" to "exchange"
+      listing_type: "Exchange", // Correctly capitalized
       owner_id: data.owner_id,
       category_id: data.category_id || 1,
-      status: "available",
+      status: "Available", // Correctly capitalized
     })
 
     // Add the book to the database
@@ -34,11 +34,12 @@ export async function POST(request: Request) {
       id: bookId,
       title: data.title,
       author: data.author,
+      description: data.description || "",
       condition: data.condition || "Good",
-      listing_type: data.listing_type || "exchange", // Changed from "swap" to "exchange"
+      listing_type: "Exchange", // Correctly capitalized
       owner_id: data.owner_id,
       category_id: data.category_id || 1,
-      status: "available",
+      status: "Available", // Correctly capitalized
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
