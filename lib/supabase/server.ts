@@ -18,3 +18,14 @@ export function createServerSupabaseClient() {
     },
   })
 }
+
+// Create a singleton instance of the Supabase client for server-side usage
+export const supabase = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      persistSession: false,
+    },
+  },
+)

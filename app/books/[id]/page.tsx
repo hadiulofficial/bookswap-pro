@@ -46,12 +46,15 @@ export default function BookDetailsPage() {
   const [wishlistLoading, setWishlistLoading] = useState(false)
   const [requestLoading, setRequestLoading] = useState(false)
   const [hasRequested, setHasRequested] = useState(false)
+  const [isDonated, setIsDonated] = useState(false)
+  const [approvedDonationRequests, setApprovedDonationRequests] = useState<string[]>([])
 
   useEffect(() => {
     fetchBookDetails()
     if (user) {
       checkWishlistStatus()
       checkRequestStatus()
+      fetchApprovedDonationRequests()
     }
   }, [bookId, user])
 
@@ -78,6 +81,9 @@ export default function BookDetailsPage() {
       setBook(bookData)
       setOwner(bookData.profiles)
 
+      // Check if book is donated
+      setIsDonated(bookData.listing_type === "Donate" && bookData.status === "reserved")
+
       // If book has a category, fetch category details
       if (bookData.category_id) {
         const { data: categoryData, error: categoryError } = await supabase
@@ -95,6 +101,26 @@ export default function BookDetailsPage() {
       setError(err.message || "Failed to load book details")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchApprovedDonationRequests = async () => {
+    if (!user) return
+
+    try {
+      const { data, error } = await supabase.from("book_requests").select("book_id").eq("status", "approved")
+
+      if (!error && data) {
+        const approvedBookIds = data.map((item) => item.book_id)
+        setApprovedDonationRequests(approvedBookIds)
+
+        // Check if current book is in approved donations
+        if (bookId && approvedBookIds.includes(bookId)) {
+          setIsDonated(true)
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching approved donations:", err)
     }
   }
 
@@ -244,6 +270,20 @@ export default function BookDetailsPage() {
     }
   }
 
+  const handlePurchase = () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to purchase this book",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Redirect to the purchase page
+    router.push(`/books/${bookId}/purchase`)
+  }
+
   const getOwnerName = () => {
     if (owner?.full_name) return owner.full_name
     if (owner?.username) return owner.username
@@ -261,6 +301,13 @@ export default function BookDetailsPage() {
       default:
         return <BookOpen className="h-4 w-4" />
     }
+  }
+
+  const isBookDonated = () => {
+    return (
+      (book?.listing_type === "Donate" && book?.status === "reserved") ||
+      (bookId && approvedDonationRequests.includes(bookId))
+    )
   }
 
   return (
@@ -308,10 +355,17 @@ export default function BookDetailsPage() {
                         src={book.cover_image || "/placeholder.svg"}
                         alt={`Cover for ${book.title}`}
                         fill
-                        className="object-cover"
+                        className={`object-cover ${isBookDonated() ? "opacity-75 grayscale-[30%]" : ""}`}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
                         priority
                       />
+                      {isBookDonated() && (
+                        <div className="absolute top-2 left-2 z-10">
+                          <Badge className="bg-green-500 hover:bg-green-600 text-white">
+                            <Check className="mr-1 h-3 w-3" /> Donated
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="flex aspect-[2/3] w-full flex-col items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 dark:bg-gray-900">
@@ -418,13 +472,18 @@ export default function BookDetailsPage() {
                             )}
 
                             {book.listing_type === "Sell" && (
-                              <Button size="lg" className="flex-1 md:flex-none">
+                              <Button size="lg" className="flex-1 md:flex-none" onClick={handlePurchase}>
                                 <ShoppingCart className="mr-2 h-4 w-4" /> Purchase
                               </Button>
                             )}
 
                             {book.listing_type === "Donate" &&
-                              (hasRequested ? (
+                              (isBookDonated() ? (
+                                <Button size="lg" variant="outline" className="flex-1 md:flex-none bg-gray-50" disabled>
+                                  <Check className="mr-2 h-4 w-4 text-green-500" />
+                                  Already Donated
+                                </Button>
+                              ) : hasRequested ? (
                                 <Button size="lg" variant="outline" className="flex-1 md:flex-none bg-gray-50" disabled>
                                   <Check className="mr-2 h-4 w-4 text-green-500" />
                                   Request Sent
@@ -456,20 +515,22 @@ export default function BookDetailsPage() {
                           </Button>
                         )}
 
-                        <Button
-                          variant={inWishlist ? "outline" : "secondary"}
-                          size="lg"
-                          className="flex-1 md:flex-none"
-                          onClick={handleWishlistToggle}
-                          disabled={wishlistLoading}
-                        >
-                          {wishlistLoading ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Heart className={`mr-2 h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
-                          )}
-                          {inWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
-                        </Button>
+                        {!isBookDonated() && (
+                          <Button
+                            variant={inWishlist ? "outline" : "secondary"}
+                            size="lg"
+                            className="flex-1 md:flex-none"
+                            onClick={handleWishlistToggle}
+                            disabled={wishlistLoading}
+                          >
+                            {wishlistLoading ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Heart className={`mr-2 h-4 w-4 ${inWishlist ? "fill-current" : ""}`} />
+                            )}
+                            {inWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <Button asChild size="lg">
