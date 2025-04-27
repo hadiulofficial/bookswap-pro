@@ -39,7 +39,7 @@ export default function PublicBooksPage() {
       setLoading(true)
       setError(null)
 
-      let query = supabase.from("books").select("*, profiles(username, full_name)").eq("status", "Available")
+      let query = supabase.from("books").select("*, profiles(id, username, full_name)").eq("status", "Available")
 
       if (listingType) {
         query = query.eq("listing_type", listingType)
@@ -352,7 +352,19 @@ export default function PublicBooksPage() {
                         <Badge variant="secondary">${book.price.toFixed(2)}</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-3">Listed by {getOwnerName(book)}</p>
+                    <p className="text-xs text-gray-400 mt-3">
+                      Listed by{" "}
+                      {book.profiles?.id ? (
+                        <Link
+                          href={`/users/${book.profiles.id}`}
+                          className="text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
+                        >
+                          {getOwnerName(book)}
+                        </Link>
+                      ) : (
+                        getOwnerName(book)
+                      )}
+                    </p>
                   </CardContent>
                   <CardFooter>
                     {user ? (
