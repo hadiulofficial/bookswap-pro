@@ -87,13 +87,30 @@ export default function SwapRequestPage() {
     if (!user) return
 
     try {
+      console.log("Fetching books for user:", user.id)
+
+      // First, let's log all the user's books to debug
+      const { data: allBooks, error: allBooksError } = await supabase
+        .from("books")
+        .select("id, title, author, listing_type, status")
+        .eq("owner_id", user.id)
+
+      console.log("All user books:", allBooks)
+
+      if (allBooksError) {
+        console.error("Error fetching all books:", allBooksError)
+      }
+
+      // Now fetch only the exchange books
       const { data, error } = await supabase
         .from("books")
         .select("*")
         .eq("owner_id", user.id)
         .eq("status", "available")
-        .in("listing_type", ["exchange", "swap"])
+        .or(`listing_type.eq.exchange,listing_type.eq.swap`)
         .order("created_at", { ascending: false })
+
+      console.log("Exchange books query result:", data)
 
       if (error) {
         throw error
@@ -202,8 +219,13 @@ export default function SwapRequestPage() {
                   <div>
                     <p className="font-medium">Unable to proceed with swap</p>
                     <p className="text-sm mt-1">{error}</p>
-                    <Button variant="outline" size="sm" className="mt-3" onClick={() => router.push("/books")}>
-                      Browse Books
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => router.push("/dashboard/books/add")}
+                    >
+                      Add a Book
                     </Button>
                   </div>
                 </div>

@@ -32,8 +32,9 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
-    // Verify the book is listed for exchange
-    if (book.listing_type.toLowerCase() !== "exchange" && book.listing_type.toLowerCase() !== "swap") {
+    // Verify the book is listed for exchange - use case insensitive comparison
+    const bookListingType = book.listing_type.toLowerCase()
+    if (bookListingType !== "exchange" && bookListingType !== "swap") {
       return {
         success: false,
         error: "This book is not available for exchange",
@@ -43,7 +44,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     // Verify the offered book belongs to the user and is listed for exchange
     const { data: offeredBook, error: offeredBookError } = await supabase
       .from("books")
-      .select("owner_id, listing_type")
+      .select("owner_id, listing_type, status")
       .eq("id", offeredBookId)
       .eq("owner_id", userId)
       .single()
@@ -56,7 +57,17 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
-    if (offeredBook.listing_type.toLowerCase() !== "exchange" && offeredBook.listing_type.toLowerCase() !== "swap") {
+    // Check if the offered book is available
+    if (offeredBook.status !== "available") {
+      return {
+        success: false,
+        error: "The book you're offering is not available for exchange",
+      }
+    }
+
+    // Use case insensitive comparison for listing type
+    const offeredBookListingType = offeredBook.listing_type.toLowerCase()
+    if (offeredBookListingType !== "exchange" && offeredBookListingType !== "swap") {
       return {
         success: false,
         error: "The book you're offering is not available for exchange",
@@ -239,13 +250,28 @@ export async function getUserSwappableBooks(userId: string) {
 
     const supabase = createServerSupabaseClient()
 
+    // Log all books for debugging
+    const { data: allBooks, error: allBooksError } = await supabase
+      .from("books")
+      .select("id, title, listing_type, status")
+      .eq("owner_id", userId)
+
+    console.log("All user books:", allBooks)
+
+    if (allBooksError) {
+      console.error("Error fetching all books:", allBooksError)
+    }
+
+    // Use OR syntax for listing_type and make sure to use lowercase comparison
     const { data, error } = await supabase
       .from("books")
       .select("*")
       .eq("owner_id", userId)
       .eq("status", "available")
-      .in("listing_type", ["exchange", "swap"])
+      .or(`listing_type.ilike.%exchange%,listing_type.ilike.%swap%`)
       .order("created_at", { ascending: false })
+
+    console.log("Swappable books query result:", data)
 
     if (error) {
       console.error("Error fetching swappable books:", error)
