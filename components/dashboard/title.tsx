@@ -11,3 +11,6 @@ export function DashboardTitle({ title, description }: DashboardTitleProps) {
     </div>
   )
 }
+
+// Add the missing Title export
+export const Title = DashboardTitle
