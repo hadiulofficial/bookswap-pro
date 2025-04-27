@@ -51,11 +51,11 @@ export function NavbarUserMenu() {
           <LayoutDashboard className="mr-2 h-4 w-4" />
           Dashboard
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/profile")}>
+        <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
           <User className="mr-2 h-4 w-4" />
           Profile
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/books")}>
+        <DropdownMenuItem onClick={() => router.push("/dashboard/books")}>
           <BookOpen className="mr-2 h-4 w-4" />
           My Books
         </DropdownMenuItem>
