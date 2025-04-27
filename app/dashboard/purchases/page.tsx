@@ -1,9 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { format } from "date-fns"
-import { Loader2, Package, Clock, CheckCircle, Truck, XCircle, Calendar, MapPin, ShoppingBag } from "lucide-react"
+import {
+  Loader2,
+  Package,
+  ShoppingBag,
+  Clock,
+  CheckCircle,
+  Truck,
+  XCircle,
+  ChevronRight,
+  Calendar,
+  MapPin,
+} from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,21 +23,12 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/contexts/auth-context"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from "@/components/ui/dialog"
 
 export default function PurchasesPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const supabase = createClientComponentClient()
 
   useEffect(() => {
@@ -33,19 +36,12 @@ export default function PurchasesPage() {
       if (!user?.id) return
 
       try {
-        console.log("Fetching orders for user:", user.id)
-
         const { data, error } = await supabase
           .from("orders")
           .select(`
             *,
             books (*),
-            shipping_details (*),
-            profiles!seller_id (
-              username,
-              full_name,
-              avatar_url
-            )
+            shipping_details (*)
           `)
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })
@@ -55,7 +51,6 @@ export default function PurchasesPage() {
           return
         }
 
-        console.log("Fetched orders:", data)
         setOrders(data || [])
       } catch (error) {
         console.error("Error in fetchOrders:", error)
@@ -64,9 +59,7 @@ export default function PurchasesPage() {
       }
     }
 
-    if (user?.id) {
-      fetchOrders()
-    }
+    fetchOrders()
   }, [user, supabase])
 
   const getStatusIcon = (status) => {
@@ -126,26 +119,22 @@ export default function PurchasesPage() {
   const getStatusText = (status) => {
     switch (status) {
       case "pending":
-        return "Order received, awaiting processing"
+        return "Your order is being processed"
       case "processing":
-        return "Seller is preparing your order"
+        return "Your order is being prepared for shipping"
       case "shipped":
-        return "Your order is on the way"
+        return "Your order is on its way"
       case "delivered":
-        return "Order has been delivered"
+        return "Your order has been delivered"
       case "cancelled":
-        return "Order has been cancelled"
+        return "Your order has been cancelled"
       default:
-        return "Status unknown"
+        return "Order status unknown"
     }
   }
 
-  const openDetailsDialog = (order) => {
-    setSelectedOrder(order)
-    setIsDetailsDialogOpen(true)
-  }
-
   const activeOrders = orders.filter((order) => ["pending", "processing", "shipped"].includes(order.status))
+
   const completedOrders = orders.filter((order) => ["delivered", "cancelled"].includes(order.status))
 
   if (loading) {
@@ -162,9 +151,9 @@ export default function PurchasesPage() {
         <ShoppingBag className="h-12 w-12 text-gray-400 mb-4" />
         <h3 className="text-xl font-semibold mb-2">No purchases yet</h3>
         <p className="text-gray-500 mb-6 max-w-md">
-          You haven't purchased any books yet. Browse our collection to find your next favorite read.
+          You haven't made any purchases yet. Browse our collection of books to find something you like.
         </p>
-        <Button onClick={() => (window.location.href = "/books")}>Browse Books</Button>
+        <Button onClick={() => router.push("/books")}>Browse Books</Button>
       </div>
     )
   }
@@ -173,7 +162,7 @@ export default function PurchasesPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">My Purchases</h2>
-        <p className="text-muted-foreground">Track and manage your book purchases.</p>
+        <p className="text-muted-foreground">View and manage your book purchases.</p>
       </div>
 
       <Tabs defaultValue="active" className="w-full">
@@ -186,7 +175,7 @@ export default function PurchasesPage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="completed">Completed Orders</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="space-y-4">
@@ -223,9 +212,6 @@ export default function PurchasesPage() {
                             {getStatusBadge(order.status)}
                           </div>
                           <p className="text-sm text-gray-500">By {order.books?.author}</p>
-                          <p className="text-sm text-gray-500">
-                            Sold by {order.profiles?.full_name || order.profiles?.username || "Unknown Seller"}
-                          </p>
                         </div>
                         <div className="text-right">
                           <p className="font-medium">${Number.parseFloat(order.amount).toFixed(2)}</p>
@@ -252,7 +238,8 @@ export default function PurchasesPage() {
                     <div className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div className="text-sm text-muted-foreground">
-                        <p>Shipping to: {order.shipping_details?.full_name}</p>
+                        <p className="font-medium text-foreground">{order.shipping_details?.full_name}</p>
+                        <p>{order.shipping_details?.address_line1}</p>
                         <p>
                           {order.shipping_details?.city}, {order.shipping_details?.state}{" "}
                           {order.shipping_details?.postal_code}
@@ -260,8 +247,16 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <Button className="sm:self-end" onClick={() => openDetailsDialog(order)}>
-                      View Details
+                    <Button
+                      variant="outline"
+                      className="sm:self-end flex items-center gap-1"
+                      onClick={() => {
+                        // Future implementation: view order details
+                        console.log("View order details", order.id)
+                      }}
+                    >
+                      Track Order
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>
@@ -304,9 +299,6 @@ export default function PurchasesPage() {
                             {getStatusBadge(order.status)}
                           </div>
                           <p className="text-sm text-gray-500">By {order.books?.author}</p>
-                          <p className="text-sm text-gray-500">
-                            Sold by {order.profiles?.full_name || order.profiles?.username || "Unknown Seller"}
-                          </p>
                         </div>
                         <div className="text-right">
                           <p className="font-medium">${Number.parseFloat(order.amount).toFixed(2)}</p>
@@ -333,7 +325,8 @@ export default function PurchasesPage() {
                     <div className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div className="text-sm text-muted-foreground">
-                        <p>Shipped to: {order.shipping_details?.full_name}</p>
+                        <p className="font-medium text-foreground">{order.shipping_details?.full_name}</p>
+                        <p>{order.shipping_details?.address_line1}</p>
                         <p>
                           {order.shipping_details?.city}, {order.shipping_details?.state}{" "}
                           {order.shipping_details?.postal_code}
@@ -341,8 +334,16 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                    <Button variant="outline" className="sm:self-end" onClick={() => openDetailsDialog(order)}>
+                    <Button
+                      variant="outline"
+                      className="sm:self-end flex items-center gap-1"
+                      onClick={() => {
+                        // Future implementation: view order details
+                        console.log("View order details", order.id)
+                      }}
+                    >
                       View Details
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
                 </CardContent>
@@ -351,93 +352,6 @@ export default function PurchasesPage() {
           )}
         </TabsContent>
       </Tabs>
-
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Order Details</DialogTitle>
-            <DialogDescription>
-              Order placed on {selectedOrder && format(new Date(selectedOrder.created_at), "MMMM d, yyyy")}
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedOrder && (
-            <div className="space-y-4 py-2">
-              <div className="flex items-center gap-3">
-                <div className="flex-shrink-0 h-16 w-12 bg-gray-100 rounded overflow-hidden">
-                  {selectedOrder.books?.cover_image ? (
-                    <img
-                      src={selectedOrder.books.cover_image || "/placeholder.svg"}
-                      alt={selectedOrder.books.title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center">
-                      <Package className="h-6 w-6 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-medium">{selectedOrder.books?.title}</h4>
-                  <p className="text-sm text-gray-500">By {selectedOrder.books?.author}</p>
-                  <p className="text-sm text-gray-500">
-                    Sold by {selectedOrder.profiles?.full_name || selectedOrder.profiles?.username || "Unknown Seller"}
-                  </p>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <h4 className="font-medium">Order Status</h4>
-                <div className="flex items-center gap-2">
-                  {getStatusIcon(selectedOrder.status)}
-                  <span>{getStatusText(selectedOrder.status)}</span>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <h4 className="font-medium">Shipping Details</h4>
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium">{selectedOrder.shipping_details?.full_name}</p>
-                  <p>{selectedOrder.shipping_details?.address_line1}</p>
-                  {selectedOrder.shipping_details?.address_line2 && (
-                    <p>{selectedOrder.shipping_details?.address_line2}</p>
-                  )}
-                  <p>
-                    {selectedOrder.shipping_details?.city}, {selectedOrder.shipping_details?.state}{" "}
-                    {selectedOrder.shipping_details?.postal_code}
-                  </p>
-                  <p>{selectedOrder.shipping_details?.country}</p>
-                  {selectedOrder.shipping_details?.phone && <p>Phone: {selectedOrder.shipping_details?.phone}</p>}
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <h4 className="font-medium">Payment Information</h4>
-                <div className="flex justify-between">
-                  <span>Price:</span>
-                  <span>${Number.parseFloat(selectedOrder.amount).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-medium">
-                  <span>Total:</span>
-                  <span>${Number.parseFloat(selectedOrder.amount).toFixed(2)}</span>
-                </div>
-              </div>
-
-              <div className="pt-4 flex justify-end">
-                <DialogClose asChild>
-                  <Button variant="outline">Close</Button>
-                </DialogClose>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
