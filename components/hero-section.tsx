@@ -1,8 +1,16 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import { useAuth } from "@/contexts/auth-context"
 
 export function HeroSection() {
+  const { user } = useAuth()
+
+  // Determine the destination for the "Get Started" button
+  const getStartedHref = user ? "/dashboard" : "/login"
+
   return (
     <section className="relative overflow-hidden py-16 md:py-24 lg:py-32 bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,10 +26,10 @@ export function HeroSection() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button size="lg" className="px-8" asChild>
-                <Link href="#">Get Started</Link>
+                <Link href={getStartedHref}>Get Started</Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href="#how-it-works">How It Works</Link>
+                <Link href="#features">Learn More</Link>
               </Button>
             </div>
           </div>

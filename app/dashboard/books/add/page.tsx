@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, BookPlus, Loader2, Info, Upload, X, ImageIcon } from "lucide-react"
+import { AlertCircle, ArrowLeft, BookPlus, Loader2, Upload, X, ImageIcon } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/lib/supabase/client"
 import { v4 as uuidv4 } from "uuid"
@@ -434,13 +434,6 @@ export default function AddBookPage() {
           </CardContent>
         </Card>
       )}
-
-      <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900">
-        <Info className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-700 dark:text-blue-300">
-          This page uses a simplified authentication method to ensure you can add books without issues.
-        </AlertDescription>
-      </Alert>
     </div>
   )
 }

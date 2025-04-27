@@ -1,4 +1,10 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export interface Database {
   public: {
@@ -111,6 +117,32 @@ export interface Database {
           created_at?: string
         }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      get_constraint_info: {
+        Args: {
+          table_name: string
+          column_name: string
+        }
+        Returns: {
+          constraint_name: string
+          constraint_type: string
+          check_clause: string
+        }[]
+      }
+      get_listing_type_values: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+    }
+    Enums: {
+      book_condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }

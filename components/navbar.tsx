@@ -36,11 +36,10 @@ export function Navbar() {
     signOut()
   }
 
-  // Update the navLinks array to include the books page
+  // Updated navLinks array - removed "How It Works"
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/books", label: "Browse Books" },
-    { href: "/how-it-works", label: "How It Works" },
     { href: "/blog", label: "Blog" },
     { href: "/contact", label: "Contact" },
   ]
