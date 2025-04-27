@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { Loader2, Search, BookOpen, RefreshCw, Filter } from "lucide-react"
+import { Loader2, Search, BookOpen, RefreshCw, Filter, Heart } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
+import { toast } from "@/components/ui/use-toast"
+import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-actions"
 
 export default function PublicBooksPage() {
   const { user } = useAuth()
@@ -22,10 +24,15 @@ export default function PublicBooksPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [listingType, setListingType] = useState<string | null>(null)
   const [condition, setCondition] = useState<string | null>(null)
+  const [wishlistStatus, setWishlistStatus] = useState<Record<string, boolean>>({})
+  const [wishlistLoading, setWishlistLoading] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     fetchBooks()
-  }, [])
+    if (user) {
+      fetchWishlistStatus()
+    }
+  }, [user])
 
   const fetchBooks = async () => {
     try {
@@ -54,6 +61,28 @@ export default function PublicBooksPage() {
       setError(err.message || "Failed to load books")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchWishlistStatus = async () => {
+    if (!user) return
+
+    try {
+      const { data, error } = await supabase.from("wishlists").select("book_id").eq("user_id", user.id)
+
+      if (error) {
+        console.error("Error fetching wishlist status:", error)
+        return
+      }
+
+      const statusMap: Record<string, boolean> = {}
+      data.forEach((item) => {
+        statusMap[item.book_id] = true
+      })
+
+      setWishlistStatus(statusMap)
+    } catch (err) {
+      console.error("Exception fetching wishlist status:", err)
     }
   }
 
@@ -88,6 +117,64 @@ export default function PublicBooksPage() {
     if (book.profiles?.full_name) return book.profiles.full_name
     if (book.profiles?.username) return book.profiles.username
     return "Anonymous User"
+  }
+
+  const handleWishlistToggle = async (bookId: string) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to add books to your wishlist",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setWishlistLoading((prev) => ({ ...prev, [bookId]: true }))
+
+    try {
+      const isInWishlist = wishlistStatus[bookId]
+
+      if (isInWishlist) {
+        const result = await removeFromWishlist(user.id, bookId)
+        if (result.success) {
+          setWishlistStatus((prev) => ({ ...prev, [bookId]: false }))
+          toast({
+            title: "Success",
+            description: "Book removed from your wishlist",
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to remove from wishlist",
+            variant: "destructive",
+          })
+        }
+      } else {
+        const result = await addToWishlist(user.id, bookId)
+        if (result.success) {
+          setWishlistStatus((prev) => ({ ...prev, [bookId]: true }))
+          toast({
+            title: "Success",
+            description: "Book added to your wishlist",
+          })
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to add to wishlist",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (err) {
+      console.error("Error toggling wishlist:", err)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      })
+    } finally {
+      setWishlistLoading((prev) => ({ ...prev, [bookId]: false }))
+    }
   }
 
   return (
@@ -232,6 +319,26 @@ export default function PublicBooksPage() {
                     >
                       {book.listing_type}
                     </Badge>
+                    {user && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`absolute top-2 left-2 h-8 w-8 rounded-full ${
+                          wishlistStatus[book.id] ? "text-red-500 bg-white/80" : "text-gray-500 bg-white/80"
+                        } hover:text-red-500 hover:bg-white`}
+                        onClick={() => handleWishlistToggle(book.id)}
+                        disabled={wishlistLoading[book.id]}
+                      >
+                        {wishlistLoading[book.id] ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Heart
+                            className={`h-4 w-4 ${wishlistStatus[book.id] ? "fill-current" : ""}`}
+                            aria-label={wishlistStatus[book.id] ? "Remove from wishlist" : "Add to wishlist"}
+                          />
+                        )}
+                      </Button>
+                    )}
                   </div>
                   <CardHeader>
                     <CardTitle className="line-clamp-1">{book.title}</CardTitle>
