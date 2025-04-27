@@ -30,6 +30,7 @@ export async function POST(request: Request) {
       status: "Available", // Correctly capitalized
       isbn: data.isbn || null,
       price: data.price || null,
+      cover_image: data.cover_image || null,
     })
 
     // Add the book to the database
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
       status: "Available", // Correctly capitalized
       isbn: data.isbn || null,
       price: data.price || null,
+      cover_image: data.cover_image || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })

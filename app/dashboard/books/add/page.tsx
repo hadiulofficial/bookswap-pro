@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { useAuth } from "@/contexts/auth-context"
 import { DashboardTitle } from "@/components/dashboard/title"
 import { Button } from "@/components/ui/button"
@@ -12,8 +13,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, BookPlus, Loader2, Info } from "lucide-react"
+import { AlertCircle, ArrowLeft, BookPlus, Loader2, Info, Upload, X, ImageIcon } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { supabase } from "@/lib/supabase/client"
+import { v4 as uuidv4 } from "uuid"
 
 export default function AddBookPage() {
   const { user } = useAuth()
@@ -21,6 +24,7 @@ export default function AddBookPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   // Form state
   const [title, setTitle] = useState("")
@@ -31,6 +35,56 @@ export default function AddBookPage() {
   const [price, setPrice] = useState("")
   const [isbn, setIsbn] = useState("")
   const [category, setCategory] = useState("1")
+  const [coverImage, setCoverImage] = useState<string | null>(null)
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file")
+      return
+    }
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size should be less than 5MB")
+      return
+    }
+
+    setIsUploading(true)
+    setError(null)
+
+    try {
+      // Upload to Supabase Storage
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${uuidv4()}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from("book-covers").upload(filePath, file)
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("book-covers").getPublicUrl(filePath)
+
+      setCoverImage(publicUrl)
+    } catch (err: any) {
+      console.error("Error uploading image:", err)
+      setError(err.message || "Failed to upload image")
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setCoverImage(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,6 +131,7 @@ export default function AddBookPage() {
         category_id: Number.parseInt(category),
         isbn: isbn || null,
         price: listingType === "Sell" && price ? Number.parseFloat(price) : null,
+        cover_image: coverImage,
       }
 
       const response = await fetch("/api/books/add", {
@@ -192,6 +247,69 @@ export default function AddBookPage() {
                       className="h-12"
                     />
                   </div>
+
+                  {/* Cover Image Upload */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-medium">Cover Image</Label>
+                    <div className="flex items-start gap-4">
+                      {/* Image Preview */}
+                      <div className="relative w-32 h-44 bg-gray-100 dark:bg-gray-800 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+                        {coverImage ? (
+                          <>
+                            <Image
+                              src={coverImage || "/placeholder.svg"}
+                              alt="Book cover"
+                              fill
+                              className="object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleRemoveImage}
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </>
+                        ) : (
+                          <ImageIcon className="h-10 w-10 text-gray-400" />
+                        )}
+                      </div>
+
+                      {/* Upload Button */}
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="cover-image"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleImageUpload}
+                            disabled={isUploading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => document.getElementById("cover-image")?.click()}
+                            disabled={isUploading}
+                            className="h-10"
+                          >
+                            {isUploading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="mr-2 h-4 w-4" /> Upload Cover
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Upload a cover image for your book (optional). Max size: 5MB.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Right column - Listing details */}
@@ -205,11 +323,11 @@ export default function AddBookPage() {
                         <SelectValue placeholder="Select condition" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="New">New</SelectItem>
                         <SelectItem value="Like New">Like New</SelectItem>
                         <SelectItem value="Very Good">Very Good</SelectItem>
                         <SelectItem value="Good">Good</SelectItem>
-                        <SelectItem value="Fair">Fair</SelectItem>
-                        <SelectItem value="Poor">Poor</SelectItem>
+                        <SelectItem value="Acceptable">Acceptable</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
