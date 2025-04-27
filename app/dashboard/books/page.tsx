@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DashboardTitle } from "@/components/dashboard/title"
-import { Loader2, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function BooksPage() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [books, setBooks] = useState<any[]>([])
   const [loadingBooks, setLoadingBooks] = useState(true)
@@ -20,7 +21,7 @@ export default function BooksPage() {
 
   useEffect(() => {
     // If not loading and no user, redirect to login
-    if (!isLoading && !user) {
+    if (!authLoading && !user) {
       router.push("/login")
       return
     }
@@ -29,7 +30,7 @@ export default function BooksPage() {
     if (user) {
       fetchBooks()
     }
-  }, [user, isLoading, router])
+  }, [user, authLoading, router])
 
   const fetchBooks = async () => {
     try {
@@ -55,18 +56,8 @@ export default function BooksPage() {
     }
   }
 
-  // Show loading state
-  if (isLoading || loadingBooks) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-4" />
-        <p className="text-gray-500">Loading your books...</p>
-      </div>
-    )
-  }
-
-  // This should not happen since we redirect in useEffect, but just in case
-  if (!user) {
+  // Only redirect if auth is not loading and there's no user
+  if (!authLoading && !user) {
     return (
       <div className="container mx-auto py-8">
         <div className="text-center">
@@ -79,6 +70,7 @@ export default function BooksPage() {
     )
   }
 
+  // Render the page layout even while loading
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -94,7 +86,35 @@ export default function BooksPage() {
         </div>
       )}
 
-      {books.length === 0 ? (
+      {loadingBooks ? (
+        // Skeleton loading state that maintains the layout
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-4 w-1/2 mb-4" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-3/4" />
+                <div className="mt-4 flex items-center gap-2">
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="h-9 w-16" />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : books.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
           <h2 className="text-xl font-medium mb-2">You haven't added any books yet</h2>
           <p className="text-gray-500 mb-4">Add your first book to start exchanging with others</p>
