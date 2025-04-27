@@ -34,6 +34,7 @@ export default function UserProfilePage() {
   const { user } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [books, setBooks] = useState<any[]>([])
+  const [donatedBookIds, setDonatedBookIds] = useState<string[]>([])
   const [bookStats, setBookStats] = useState({
     total: 0,
     sold: 0,
@@ -43,14 +44,32 @@ export default function UserProfilePage() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
     if (!id) return
 
-    fetchUserProfile()
-    fetchUserBooks()
-    fetchBookStats()
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        await Promise.all([fetchUserProfile(), fetchUserBooks(), fetchApprovedDonations()])
+        setDataLoaded(true)
+      } catch (err) {
+        console.error("Error loading data:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
   }, [id])
+
+  // Calculate stats after all data is loaded
+  useEffect(() => {
+    if (dataLoaded) {
+      calculateStats()
+    }
+  }, [dataLoaded, books, donatedBookIds])
 
   const fetchUserProfile = async () => {
     try {
@@ -66,48 +85,85 @@ export default function UserProfilePage() {
 
   const fetchUserBooks = async () => {
     try {
-      setLoading(true)
-      setError(null)
-
-      // Fetch all books including those that are reserved (donated/sold/exchanged)
       const { data, error } = await supabase
         .from("books")
         .select("*")
         .eq("owner_id", id)
-        .in("status", ["Available", "reserved"])
         .order("created_at", { ascending: false })
 
       if (error) throw error
+      console.log("Fetched books:", data)
       setBooks(data || [])
     } catch (err: any) {
       console.error("Error fetching user books:", err)
       setError(err.message || "Failed to load books")
-    } finally {
-      setLoading(false)
     }
   }
 
-  const fetchBookStats = async () => {
+  const fetchApprovedDonations = async () => {
     try {
-      // Get all books for stats calculation
-      const { data, error } = await supabase.from("books").select("id, listing_type, status").eq("owner_id", id)
+      // Get all approved book requests for this user's books
+      const { data, error } = await supabase
+        .from("book_requests")
+        .select("book_id")
+        .eq("owner_id", id)
+        .eq("status", "approved")
 
       if (error) throw error
 
-      if (data) {
-        // Calculate stats based on database values
-        const stats = {
-          total: data.length,
-          sold: data.filter((book) => book.listing_type === "Sell" && book.status === "reserved").length,
-          donated: data.filter((book) => book.listing_type === "Donate" && book.status === "reserved").length,
-          exchanged: data.filter((book) => book.listing_type === "Exchange" && book.status === "reserved").length,
-          available: data.filter((book) => book.status === "Available").length,
-        }
-        setBookStats(stats)
-      }
+      // Extract book IDs from approved requests
+      const bookIds = data?.map((request) => request.book_id) || []
+      console.log("Approved donation book IDs:", bookIds)
+      setDonatedBookIds(bookIds)
     } catch (err: any) {
-      console.error("Error fetching book stats:", err)
+      console.error("Error fetching approved donations:", err)
     }
+  }
+
+  const calculateStats = () => {
+    let available = 0
+    let donated = 0
+    let sold = 0
+    let exchanged = 0
+
+    books.forEach((book) => {
+      // Check if this book has an approved donation request
+      const isDonated = donatedBookIds.includes(book.id)
+
+      if (book.listing_type === "Donate") {
+        if (isDonated || book.status === "reserved") {
+          donated++
+        } else {
+          available++
+        }
+      } else if (book.listing_type === "Sell") {
+        if (book.status === "reserved") {
+          sold++
+        } else {
+          available++
+        }
+      } else if (book.listing_type === "Exchange") {
+        if (book.status === "reserved") {
+          exchanged++
+        } else {
+          available++
+        }
+      } else {
+        // Default case
+        available++
+      }
+    })
+
+    const newStats = {
+      total: books.length,
+      available,
+      donated,
+      sold,
+      exchanged,
+    }
+
+    console.log("Calculated stats:", newStats)
+    setBookStats(newStats)
   }
 
   const getDisplayName = () => {
@@ -137,7 +193,11 @@ export default function UserProfilePage() {
 
   // Check if a book has been donated
   const isBookDonated = (book: any) => {
-    return book.listing_type === "Donate" && book.status === "reserved"
+    // Check if book has an approved donation request
+    const hasApprovedRequest = donatedBookIds.includes(book.id)
+
+    // Book is donated if it's a donation listing AND (has status "reserved" OR has an approved request)
+    return book.listing_type === "Donate" && (book.status === "reserved" || hasApprovedRequest)
   }
 
   if (error) {
@@ -299,6 +359,7 @@ export default function UserProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {books.map((book) => {
                         const donated = isBookDonated(book)
+                        console.log(`Book ${book.title} (${book.id}) donated status:`, donated)
 
                         return (
                           <Card key={book.id} className={`overflow-hidden ${donated ? "opacity-75" : ""}`}>
