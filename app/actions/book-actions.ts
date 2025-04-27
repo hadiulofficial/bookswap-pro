@@ -71,7 +71,7 @@ export async function addBook(data: BookFormValues) {
     const bookId = uuidv4()
 
     // Convert listing type to database format
-    let listingType = data.listing_type.toLowerCase()
+    let listingType = typeof data.listing_type === "string" ? data.listing_type.toLowerCase() : data.listing_type
     if (listingType === "exchange") listingType = "swap"
 
     // Add the book to the database
@@ -156,8 +156,10 @@ export async function updateBook(bookId: string, data: BookFormValues) {
     }
 
     // Convert listing type to database format
-    let listingType = data.listing_type.toLowerCase()
+    let listingType = typeof data.listing_type === "string" ? data.listing_type.toLowerCase() : data.listing_type
     if (listingType === "exchange") listingType = "swap"
+
+    console.log("Converted listing type:", listingType)
 
     // Update the book in the database
     const { error } = await supabase

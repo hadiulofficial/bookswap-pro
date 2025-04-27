@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DashboardTitle } from "@/components/dashboard/title"
 import { BookUpload } from "@/components/dashboard/book-upload"
-import { VALID_CONDITIONS, updateBook, getCategories } from "@/app/actions/book-actions"
+import { VALID_CONDITIONS, updateBook } from "@/app/actions/book-actions"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createClientSupabaseClient } from "@/lib/supabase/client"
@@ -90,8 +90,18 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         }
 
         // Fetch categories
-        const categoriesData = await getCategories()
-        setCategories(categoriesData)
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from("categories")
+          .select("id, name")
+          .order("name")
+
+        if (categoriesError) {
+          console.error("Error fetching categories:", categoriesError)
+          setError("Failed to load categories")
+          return
+        }
+
+        setCategories(categoriesData || [])
 
         // Convert listing_type to match our enum if needed
         let listingType = bookData.listing_type
@@ -443,11 +453,17 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category.id} value={category.id.toString()}>
-                                  {category.name}
+                              {categories && categories.length > 0 ? (
+                                categories.map((category) => (
+                                  <SelectItem key={category.id} value={category.id.toString()}>
+                                    {category.name}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="0" disabled>
+                                  No categories available
                                 </SelectItem>
-                              ))}
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
