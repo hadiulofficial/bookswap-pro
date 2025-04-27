@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   Gift,
+  ShoppingBag,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -67,6 +68,11 @@ export function DashboardSidebar() {
       href: "/dashboard/books",
       title: "My Books",
       icon: <BookOpen className="h-5 w-5" />,
+    },
+    {
+      href: "/dashboard/purchases",
+      title: "Purchases",
+      icon: <ShoppingBag className="h-5 w-5" />,
     },
     {
       href: "/dashboard/swaps",
