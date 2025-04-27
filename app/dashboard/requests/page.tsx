@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { getBookRequests, getUserRequests, updateRequestStatus } from "@/app/actions/book-request-actions"
+import { updateRequestStatus } from "@/app/actions/book-request-actions"
 import { useAuth } from "@/contexts/auth-context"
 import { DashboardTitle } from "@/components/dashboard/title"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { format } from "date-fns"
 import { toast } from "@/components/ui/use-toast"
+import { supabase } from "@/lib/supabase/client"
 
 export default function RequestsPage() {
   const { user } = useAuth()
@@ -35,19 +36,82 @@ export default function RequestsPage() {
     console.log("Fetching requests for user:", user.id)
 
     try {
-      const incoming = await getBookRequests(user.id)
-      const outgoing = await getUserRequests(user.id)
+      // Fetch incoming requests (requests for books you own)
+      const { data: incomingData, error: incomingError } = await supabase
+        .from("book_requests")
+        .select(`
+          id, 
+          created_at,
+          updated_at,
+          status,
+          message,
+          book_id,
+          user_id,
+          owner_id,
+          books:book_id (
+            id, 
+            title, 
+            author, 
+            cover_image, 
+            listing_type
+          ),
+          profiles:user_id (
+            id,
+            username,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false })
 
-      console.log("Incoming requests:", incoming)
-      console.log("Outgoing requests:", outgoing)
+      if (incomingError) {
+        throw incomingError
+      }
 
-      setIncomingRequests(incoming || [])
-      setOutgoingRequests(outgoing || [])
-    } catch (error) {
-      console.error("Error fetching requests:", error)
+      // Fetch outgoing requests (requests you made for others' books)
+      const { data: outgoingData, error: outgoingError } = await supabase
+        .from("book_requests")
+        .select(`
+          id, 
+          created_at,
+          updated_at,
+          status,
+          message,
+          book_id,
+          user_id,
+          owner_id,
+          books:book_id (
+            id, 
+            title, 
+            author, 
+            cover_image, 
+            listing_type
+          ),
+          profiles:owner_id (
+            id,
+            username,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+
+      if (outgoingError) {
+        throw outgoingError
+      }
+
+      console.log("Incoming requests:", incomingData)
+      console.log("Outgoing requests:", outgoingData)
+
+      setIncomingRequests(incomingData || [])
+      setOutgoingRequests(outgoingData || [])
+    } catch (err: any) {
+      console.error("Error fetching requests:", err)
       toast({
         title: "Error",
-        description: "Failed to load requests.",
+        description: err.message || "Failed to load requests",
         variant: "destructive",
       })
     } finally {

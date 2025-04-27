@@ -134,38 +134,52 @@ export async function getBookRequests(userId: string, status?: string) {
     console.log("Getting book requests for owner:", userId)
     const supabase = createServerSupabaseClient()
 
-    // Use a raw query to debug what's happening
-    const { data: rawData, error: rawError } = await supabase.from("book_requests").select("*").eq("owner_id", userId)
-
-    console.log("Raw book requests data:", rawData)
-
-    if (rawError) {
-      console.error("Error fetching raw book requests:", rawError)
-    }
-
-    let query = supabase
+    // First, let's get all book requests for this owner
+    const { data: requests, error } = await supabase
       .from("book_requests")
-      .select(`
-        *,
-        books:book_id(id, title, author, cover_image, listing_type),
-        profiles:user_id(id, username, full_name, avatar_url)
-      `)
+      .select("*")
       .eq("owner_id", userId)
-
-    if (status) {
-      query = query.eq("status", status)
-    }
-
-    const { data, error } = await query.order("created_at", { ascending: false })
+      .order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error fetching book requests:", error)
       return []
     }
 
-    console.log(`Found ${data?.length || 0} book requests for owner ${userId}`)
-    console.log("Book requests data:", data)
-    return data || []
+    if (!requests || requests.length === 0) {
+      console.log("No book requests found for owner:", userId)
+      return []
+    }
+
+    console.log(`Found ${requests.length} book requests for owner ${userId}`)
+
+    // Now, for each request, get the book and requester details
+    const enrichedRequests = await Promise.all(
+      requests.map(async (request) => {
+        // Get book details
+        const { data: book } = await supabase
+          .from("books")
+          .select("id, title, author, cover_image, listing_type")
+          .eq("id", request.book_id)
+          .single()
+
+        // Get requester details
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url")
+          .eq("id", request.user_id)
+          .single()
+
+        return {
+          ...request,
+          books: book || null,
+          profiles: profile || null,
+        }
+      }),
+    )
+
+    console.log("Enriched book requests:", enrichedRequests)
+    return enrichedRequests
   } catch (error) {
     console.error("Exception fetching book requests:", error)
     return []
@@ -182,38 +196,52 @@ export async function getUserRequests(userId: string, status?: string) {
     console.log("Getting user requests for requester:", userId)
     const supabase = createServerSupabaseClient()
 
-    // Use a raw query to debug what's happening
-    const { data: rawData, error: rawError } = await supabase.from("book_requests").select("*").eq("user_id", userId)
-
-    console.log("Raw user requests data:", rawData)
-
-    if (rawError) {
-      console.error("Error fetching raw user requests:", rawError)
-    }
-
-    let query = supabase
+    // First, let's get all book requests made by this user
+    const { data: requests, error } = await supabase
       .from("book_requests")
-      .select(`
-        *,
-        books:book_id(id, title, author, cover_image, listing_type),
-        profiles:owner_id(id, username, full_name, avatar_url)
-      `)
+      .select("*")
       .eq("user_id", userId)
-
-    if (status) {
-      query = query.eq("status", status)
-    }
-
-    const { data, error } = await query.order("created_at", { ascending: false })
+      .order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error fetching user requests:", error)
       return []
     }
 
-    console.log(`Found ${data?.length || 0} user requests for requester ${userId}`)
-    console.log("User requests data:", data)
-    return data || []
+    if (!requests || requests.length === 0) {
+      console.log("No user requests found for requester:", userId)
+      return []
+    }
+
+    console.log(`Found ${requests.length} user requests for requester ${userId}`)
+
+    // Now, for each request, get the book and owner details
+    const enrichedRequests = await Promise.all(
+      requests.map(async (request) => {
+        // Get book details
+        const { data: book } = await supabase
+          .from("books")
+          .select("id, title, author, cover_image, listing_type")
+          .eq("id", request.book_id)
+          .single()
+
+        // Get owner details
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, username, full_name, avatar_url")
+          .eq("id", request.owner_id)
+          .single()
+
+        return {
+          ...request,
+          books: book || null,
+          profiles: profile || null,
+        }
+      }),
+    )
+
+    console.log("Enriched user requests:", enrichedRequests)
+    return enrichedRequests
   } catch (error) {
     console.error("Exception fetching user requests:", error)
     return []
@@ -232,7 +260,7 @@ export async function updateRequestStatus(requestId: string, status: "approved" 
     // Check if the request exists and belongs to the user
     const { data: request, error: fetchError } = await supabase
       .from("book_requests")
-      .select("id, owner_id, user_id, book_id, status, books:book_id(title)")
+      .select("id, owner_id, user_id, book_id, status")
       .eq("id", requestId)
       .single()
 
@@ -240,6 +268,9 @@ export async function updateRequestStatus(requestId: string, status: "approved" 
       console.error("Error fetching request:", fetchError)
       return { success: false, error: "Request not found" }
     }
+
+    // Get book details for notification
+    const { data: book } = await supabase.from("books").select("title").eq("id", request.book_id).single()
 
     // Verify the user is the owner of the book
     if (request.owner_id !== userId) {
@@ -281,7 +312,7 @@ export async function updateRequestStatus(requestId: string, status: "approved" 
     }
 
     // Get book title for notification
-    const bookTitle = request.books?.title || "requested book"
+    const bookTitle = book?.title || "requested book"
 
     // Add a notification for the requester with more details
     await supabase.from("notifications").insert({
