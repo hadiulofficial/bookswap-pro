@@ -1,8 +1,11 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,12 +14,13 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { Loader2, Search, BookOpen, RefreshCw, Filter, Heart } from "lucide-react"
+import { Loader2, Search, BookOpen, Filter, Heart, ChevronRight } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-actions"
 
 export default function PublicBooksPage() {
+  const router = useRouter()
   const { user } = useAuth()
   const [books, setBooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -127,7 +131,9 @@ export default function PublicBooksPage() {
     return "Anonymous User"
   }
 
-  const handleWishlistToggle = async (bookId: string) => {
+  const handleWishlistToggle = async (e: React.MouseEvent, bookId: string) => {
+    e.stopPropagation() // Prevent card click when clicking the wishlist button
+
     if (!user) {
       toast({
         title: "Authentication required",
@@ -183,6 +189,10 @@ export default function PublicBooksPage() {
     } finally {
       setWishlistLoading((prev) => ({ ...prev, [bookId]: false }))
     }
+  }
+
+  const navigateToBookDetails = (bookId: string) => {
+    router.push(`/books/${bookId}`)
   }
 
   return (
@@ -317,14 +327,18 @@ export default function PublicBooksPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {books.map((book) => (
-                <Card key={book.id} className="overflow-hidden">
-                  <div className="relative h-48 bg-gray-100 dark:bg-gray-700">
+                <Card
+                  key={book.id}
+                  className="overflow-hidden group transition-all duration-200 hover:shadow-md cursor-pointer"
+                  onClick={() => navigateToBookDetails(book.id)}
+                >
+                  <div className="relative h-48 bg-gray-100 dark:bg-gray-700 overflow-hidden">
                     {book.cover_image ? (
                       <Image
                         src={book.cover_image || "/placeholder.svg"}
                         alt={book.title}
                         fill
-                        className="object-cover"
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                     ) : (
@@ -333,7 +347,7 @@ export default function PublicBooksPage() {
                       </div>
                     )}
                     <Badge
-                      className="absolute top-2 right-2"
+                      className="absolute top-2 right-2 z-10"
                       variant={
                         book.listing_type === "Exchange"
                           ? "default"
@@ -348,10 +362,10 @@ export default function PublicBooksPage() {
                       <Button
                         size="icon"
                         variant="ghost"
-                        className={`absolute top-2 left-2 h-8 w-8 rounded-full ${
+                        className={`absolute top-2 left-2 z-10 h-8 w-8 rounded-full ${
                           wishlistStatus[book.id] ? "text-red-500 bg-white/80" : "text-gray-500 bg-white/80"
                         } hover:text-red-500 hover:bg-white`}
-                        onClick={() => handleWishlistToggle(book.id)}
+                        onClick={(e) => handleWishlistToggle(e, book.id)}
                         disabled={wishlistLoading[book.id]}
                       >
                         {wishlistLoading[book.id] ? (
@@ -365,16 +379,20 @@ export default function PublicBooksPage() {
                       </Button>
                     )}
                   </div>
-                  <CardHeader>
-                    <CardTitle className="line-clamp-1">{book.title}</CardTitle>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                      {book.title}
+                    </CardTitle>
                     <p className="text-sm text-gray-500">By {book.author}</p>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pb-2">
                     {book.description && <p className="text-sm text-gray-500 line-clamp-2 mb-2">{book.description}</p>}
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="outline">{book.condition}</Badge>
                       {book.listing_type === "Sell" && book.price && (
-                        <Badge variant="secondary">${book.price.toFixed(2)}</Badge>
+                        <Badge variant="secondary" className="font-medium">
+                          ${book.price.toFixed(2)}
+                        </Badge>
                       )}
                     </div>
                     <p className="text-xs text-gray-400 mt-3">
@@ -383,6 +401,7 @@ export default function PublicBooksPage() {
                         <Link
                           href={`/users/${book.profiles.id}`}
                           className="text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
+                          onClick={(e) => e.stopPropagation()} // Prevent card click when clicking the username
                         >
                           {getOwnerName(book)}
                         </Link>
@@ -391,24 +410,13 @@ export default function PublicBooksPage() {
                       )}
                     </p>
                   </CardContent>
-                  <CardFooter>
-                    {user ? (
-                      <Button className="w-full">
-                        {book.listing_type === "Exchange" ? (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
-                          </>
-                        ) : book.listing_type === "Sell" ? (
-                          "Purchase"
-                        ) : (
-                          "Request Book"
-                        )}
-                      </Button>
-                    ) : (
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href="/login">Sign in to interact</Link>
-                      </Button>
-                    )}
+                  <CardFooter className="pt-0">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-between group-hover:bg-emerald-50 group-hover:text-emerald-600"
+                    >
+                      View Details <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
