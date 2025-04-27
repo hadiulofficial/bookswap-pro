@@ -101,7 +101,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
           return
         }
 
-        setCategories(categoriesData || [])
+        setCategories(Array.isArray(categoriesData) ? categoriesData : [])
 
         // Convert listing_type to match our enum if needed
         let listingType = bookData.listing_type
@@ -110,18 +110,20 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         if (listingType === "donation") listingType = "Donation"
 
         // Set form values
-        form.reset({
-          title: bookData.title || "",
-          author: bookData.author || "",
-          isbn: bookData.isbn || "",
-          description: bookData.description || "",
-          condition: bookData.condition || "",
-          category_id: bookData.category_id || 0,
-          listing_type: listingType as "Sale" | "Exchange" | "Donation",
-          price: bookData.price,
-          cover_image: bookData.cover_image || "",
-          user_id: user.id,
-        })
+        if (bookData) {
+          form.reset({
+            title: bookData.title || "",
+            author: bookData.author || "",
+            isbn: bookData.isbn || "",
+            description: bookData.description || "",
+            condition: bookData.condition || "",
+            category_id: bookData.category_id || 0,
+            listing_type: listingType as "Sale" | "Exchange" | "Donation",
+            price: bookData.price,
+            cover_image: bookData.cover_image || "",
+            user_id: user.id,
+          })
+        }
       } catch (err: any) {
         console.error("Error fetching data:", err)
         setError(err.message || "Failed to load book data")
@@ -453,7 +455,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {categories && categories.length > 0 ? (
+                              {Array.isArray(categories) && categories.length > 0 ? (
                                 categories.map((category) => (
                                   <SelectItem key={category.id} value={category.id.toString()}>
                                     {category.name}
