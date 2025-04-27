@@ -69,6 +69,7 @@ export default function UserProfilePage() {
       setLoading(true)
       setError(null)
 
+      // Fetch all books including those that are reserved (donated/sold/exchanged)
       const { data, error } = await supabase
         .from("books")
         .select("*")
@@ -94,6 +95,7 @@ export default function UserProfilePage() {
       if (error) throw error
 
       if (data) {
+        // Calculate stats based on database values
         const stats = {
           total: data.length,
           sold: data.filter((book) => book.listing_type === "Sell" && book.status === "reserved").length,
@@ -131,6 +133,11 @@ export default function UserProfilePage() {
       month: "long",
       day: "numeric",
     })
+  }
+
+  // Check if a book has been donated
+  const isBookDonated = (book: any) => {
+    return book.listing_type === "Donate" && book.status === "reserved"
   }
 
   if (error) {
@@ -290,87 +297,88 @@ export default function UserProfilePage() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {books.map((book) => (
-                        <Card
-                          key={book.id}
-                          className={`overflow-hidden ${book.status === "reserved" && book.listing_type === "Donate" ? "opacity-75" : ""}`}
-                        >
-                          <div className="relative h-48 bg-gray-100 dark:bg-gray-700">
-                            {book.cover_image ? (
-                              <Image
-                                src={book.cover_image || "/placeholder.svg"}
-                                alt={book.title}
-                                fill
-                                className={`object-cover ${book.status === "reserved" && book.listing_type === "Donate" ? "opacity-75 grayscale-[30%]" : ""}`}
-                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              />
-                            ) : (
-                              <div className="flex h-full items-center justify-center">
-                                <BookOpen className="h-12 w-12 text-gray-400" />
-                              </div>
-                            )}
-                            <Badge
-                              className="absolute top-2 right-2"
-                              variant={
-                                book.listing_type === "Exchange"
-                                  ? "default"
-                                  : book.listing_type === "Sell"
-                                    ? "secondary"
-                                    : "outline"
-                              }
-                            >
-                              {book.listing_type}
-                            </Badge>
+                      {books.map((book) => {
+                        const donated = isBookDonated(book)
 
-                            {/* Donated badge */}
-                            {book.status === "reserved" && book.listing_type === "Donate" && (
-                              <Badge className="absolute top-2 left-2 z-10 bg-green-500 hover:bg-green-600">
-                                <Check className="h-3 w-3 mr-1" /> Donated
+                        return (
+                          <Card key={book.id} className={`overflow-hidden ${donated ? "opacity-75" : ""}`}>
+                            <div className="relative h-48 bg-gray-100 dark:bg-gray-700">
+                              {book.cover_image ? (
+                                <Image
+                                  src={book.cover_image || "/placeholder.svg"}
+                                  alt={book.title}
+                                  fill
+                                  className={`object-cover ${donated ? "opacity-75 grayscale-[30%]" : ""}`}
+                                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center">
+                                  <BookOpen className="h-12 w-12 text-gray-400" />
+                                </div>
+                              )}
+                              <Badge
+                                className="absolute top-2 right-2"
+                                variant={
+                                  book.listing_type === "Exchange"
+                                    ? "default"
+                                    : book.listing_type === "Sell"
+                                      ? "secondary"
+                                      : "outline"
+                                }
+                              >
+                                {book.listing_type}
                               </Badge>
-                            )}
-                          </div>
-                          <CardHeader>
-                            <CardTitle className="line-clamp-1">{book.title}</CardTitle>
-                            <p className="text-sm text-gray-500">By {book.author}</p>
-                          </CardHeader>
-                          <CardContent>
-                            {book.description && (
-                              <p className="text-sm text-gray-500 line-clamp-2 mb-2">{book.description}</p>
-                            )}
-                            <div className="flex items-center gap-2 mt-2">
-                              <Badge variant="outline">{book.condition}</Badge>
-                              {book.listing_type === "Sell" && book.price && (
-                                <Badge variant="secondary">${book.price.toFixed(2)}</Badge>
+
+                              {/* Donated badge */}
+                              {donated && (
+                                <Badge className="absolute top-2 left-2 z-10 bg-green-500 hover:bg-green-600">
+                                  <Check className="h-3 w-3 mr-1" /> Donated
+                                </Badge>
                               )}
                             </div>
-                          </CardContent>
-                          <CardFooter>
-                            {user ? (
-                              book.status === "reserved" && book.listing_type === "Donate" ? (
-                                <Button variant="outline" className="w-full" disabled>
-                                  <Check className="mr-2 h-4 w-4 text-green-500" /> Already Donated
-                                </Button>
+                            <CardHeader>
+                              <CardTitle className="line-clamp-1">{book.title}</CardTitle>
+                              <p className="text-sm text-gray-500">By {book.author}</p>
+                            </CardHeader>
+                            <CardContent>
+                              {book.description && (
+                                <p className="text-sm text-gray-500 line-clamp-2 mb-2">{book.description}</p>
+                              )}
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant="outline">{book.condition}</Badge>
+                                {book.listing_type === "Sell" && book.price && (
+                                  <Badge variant="secondary">${book.price.toFixed(2)}</Badge>
+                                )}
+                              </div>
+                            </CardContent>
+                            <CardFooter>
+                              {user ? (
+                                donated ? (
+                                  <Button variant="outline" className="w-full" disabled>
+                                    <Check className="mr-2 h-4 w-4 text-green-500" /> Already Donated
+                                  </Button>
+                                ) : (
+                                  <Button className="w-full">
+                                    {book.listing_type === "Exchange" ? (
+                                      <>
+                                        <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
+                                      </>
+                                    ) : book.listing_type === "Sell" ? (
+                                      "Purchase"
+                                    ) : (
+                                      "Request Book"
+                                    )}
+                                  </Button>
+                                )
                               ) : (
-                                <Button className="w-full">
-                                  {book.listing_type === "Exchange" ? (
-                                    <>
-                                      <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
-                                    </>
-                                  ) : book.listing_type === "Sell" ? (
-                                    "Purchase"
-                                  ) : (
-                                    "Request Book"
-                                  )}
+                                <Button asChild variant="outline" className="w-full">
+                                  <Link href="/login">Sign in to interact</Link>
                                 </Button>
-                              )
-                            ) : (
-                              <Button asChild variant="outline" className="w-full">
-                                <Link href="/login">Sign in to interact</Link>
-                              </Button>
-                            )}
-                          </CardFooter>
-                        </Card>
-                      ))}
+                              )}
+                            </CardFooter>
+                          </Card>
+                        )
+                      })}
                     </div>
                   )}
                 </TabsContent>
