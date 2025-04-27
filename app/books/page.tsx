@@ -15,7 +15,6 @@ import { Loader2, Search, BookOpen, RefreshCw, Filter, Heart } from "lucide-reac
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-actions"
-import { Checkbox } from "@/components/ui/checkbox"
 
 export default function PublicBooksPage() {
   const { user } = useAuth()
@@ -27,7 +26,6 @@ export default function PublicBooksPage() {
   const [condition, setCondition] = useState<string | null>(null)
   const [wishlistStatus, setWishlistStatus] = useState<Record<string, boolean>>({})
   const [wishlistLoading, setWishlistLoading] = useState<Record<string, boolean>>({})
-  const [hideOwnListings, setHideOwnListings] = useState(false)
 
   useEffect(() => {
     fetchBooks()
@@ -45,6 +43,11 @@ export default function PublicBooksPage() {
         .from("books")
         .select("*, profiles(id, username, full_name), owner_id")
         .eq("status", "Available")
+
+      // If user is logged in, exclude their own books
+      if (user) {
+        query = query.neq("owner_id", user.id)
+      }
 
       if (listingType) {
         query = query.eq("listing_type", listingType)
@@ -108,18 +111,13 @@ export default function PublicBooksPage() {
   }
 
   const handleFilterChange = () => {
-    fetchBooks().then(() => {
-      if (user && hideOwnListings) {
-        setBooks((prevBooks) => prevBooks.filter((book) => book.owner_id !== user.id))
-      }
-    })
+    fetchBooks()
   }
 
   const resetFilters = () => {
     setSearchQuery("")
     setListingType(null)
     setCondition(null)
-    setHideOwnListings(false)
     fetchBooks()
   }
 
@@ -203,8 +201,8 @@ export default function PublicBooksPage() {
 
           {/* Search and Filters */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-1">
                 <div className="relative">
                   <Input
                     placeholder="Search by title, author, or description"
@@ -244,25 +242,6 @@ export default function PublicBooksPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                {user && (
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="hideOwn"
-                      checked={hideOwnListings}
-                      onCheckedChange={(checked) => {
-                        setHideOwnListings(checked === true)
-                      }}
-                    />
-                    <label
-                      htmlFor="hideOwn"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Hide my listings
-                    </label>
-                  </div>
-                )}
-              </div>
             </div>
             <div className="flex justify-end mt-4 gap-2">
               <Button variant="outline" onClick={resetFilters}>
@@ -294,6 +273,23 @@ export default function PublicBooksPage() {
                     <Link href="/signup">Create Account</Link>
                   </Button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* User's books management link */}
+          {user && (
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-6 mb-8">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-emerald-800 dark:text-emerald-300">
+                    Looking for your listings?
+                  </h2>
+                  <p className="text-emerald-700 dark:text-emerald-400">Manage your books in the dashboard.</p>
+                </div>
+                <Button asChild>
+                  <Link href="/dashboard/books">Manage My Books</Link>
+                </Button>
               </div>
             </div>
           )}
@@ -397,23 +393,17 @@ export default function PublicBooksPage() {
                   </CardContent>
                   <CardFooter>
                     {user ? (
-                      book.owner_id === user.id ? (
-                        <Button asChild variant="outline" className="w-full">
-                          <Link href={`/dashboard/books/edit/${book.id}`}>Manage Listing</Link>
-                        </Button>
-                      ) : (
-                        <Button className="w-full">
-                          {book.listing_type === "Exchange" ? (
-                            <>
-                              <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
-                            </>
-                          ) : book.listing_type === "Sell" ? (
-                            "Purchase"
-                          ) : (
-                            "Request Book"
-                          )}
-                        </Button>
-                      )
+                      <Button className="w-full">
+                        {book.listing_type === "Exchange" ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
+                          </>
+                        ) : book.listing_type === "Sell" ? (
+                          "Purchase"
+                        ) : (
+                          "Request Book"
+                        )}
+                      </Button>
                     ) : (
                       <Button asChild variant="outline" className="w-full">
                         <Link href="/login">Sign in to interact</Link>
