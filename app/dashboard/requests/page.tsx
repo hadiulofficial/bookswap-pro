@@ -36,77 +36,88 @@ export default function RequestsPage() {
     console.log("Fetching requests for user:", user.id)
 
     try {
-      // Fetch incoming requests (requests for books you own)
-      const { data: incomingData, error: incomingError } = await supabase
+      // Step 1: Get all incoming requests (where you are the owner)
+      const { data: incomingRequestsRaw, error: incomingError } = await supabase
         .from("book_requests")
-        .select(`
-          id, 
-          created_at,
-          updated_at,
-          status,
-          message,
-          book_id,
-          user_id,
-          owner_id,
-          books:book_id (
-            id, 
-            title, 
-            author, 
-            cover_image, 
-            listing_type
-          ),
-          profiles:user_id (
-            id,
-            username,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select("*")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
 
       if (incomingError) {
+        console.error("Error fetching incoming requests:", incomingError)
         throw incomingError
       }
 
-      // Fetch outgoing requests (requests you made for others' books)
-      const { data: outgoingData, error: outgoingError } = await supabase
+      // Step 2: Get all outgoing requests (where you are the requester)
+      const { data: outgoingRequestsRaw, error: outgoingError } = await supabase
         .from("book_requests")
-        .select(`
-          id, 
-          created_at,
-          updated_at,
-          status,
-          message,
-          book_id,
-          user_id,
-          owner_id,
-          books:book_id (
-            id, 
-            title, 
-            author, 
-            cover_image, 
-            listing_type
-          ),
-          profiles:owner_id (
-            id,
-            username,
-            full_name,
-            avatar_url
-          )
-        `)
+        .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
       if (outgoingError) {
+        console.error("Error fetching outgoing requests:", outgoingError)
         throw outgoingError
       }
 
-      console.log("Incoming requests:", incomingData)
-      console.log("Outgoing requests:", outgoingData)
+      console.log("Raw incoming requests:", incomingRequestsRaw)
+      console.log("Raw outgoing requests:", outgoingRequestsRaw)
 
-      setIncomingRequests(incomingData || [])
-      setOutgoingRequests(outgoingData || [])
+      // Step 3: Enrich incoming requests with book and user details
+      const enrichedIncoming = await Promise.all(
+        (incomingRequestsRaw || []).map(async (request) => {
+          // Get book details
+          const { data: book } = await supabase
+            .from("books")
+            .select("id, title, author, cover_image, listing_type")
+            .eq("id", request.book_id)
+            .single()
+
+          // Get requester details
+          const { data: requester } = await supabase
+            .from("profiles")
+            .select("id, username, full_name, avatar_url")
+            .eq("id", request.user_id)
+            .single()
+
+          return {
+            ...request,
+            books: book || { title: "Unknown Book", author: "Unknown Author" },
+            profiles: requester || { username: "Unknown User" },
+          }
+        }),
+      )
+
+      // Step 4: Enrich outgoing requests with book and owner details
+      const enrichedOutgoing = await Promise.all(
+        (outgoingRequestsRaw || []).map(async (request) => {
+          // Get book details
+          const { data: book } = await supabase
+            .from("books")
+            .select("id, title, author, cover_image, listing_type")
+            .eq("id", request.book_id)
+            .single()
+
+          // Get owner details
+          const { data: owner } = await supabase
+            .from("profiles")
+            .select("id, username, full_name, avatar_url")
+            .eq("id", request.owner_id)
+            .single()
+
+          return {
+            ...request,
+            books: book || { title: "Unknown Book", author: "Unknown Author" },
+            profiles: owner || { username: "Unknown User" },
+          }
+        }),
+      )
+
+      console.log("Enriched incoming requests:", enrichedIncoming)
+      console.log("Enriched outgoing requests:", enrichedOutgoing)
+
+      setIncomingRequests(enrichedIncoming)
+      setOutgoingRequests(enrichedOutgoing)
     } catch (err: any) {
       console.error("Error fetching requests:", err)
       toast({
