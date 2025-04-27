@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DashboardTitle } from "@/components/dashboard/title"
-import { Plus } from "lucide-react"
+import { Plus, BookOpen } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -123,7 +124,7 @@ export default function BooksPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {books.map((book) => (
-            <Card key={book.id}>
+            <Card key={book.id} className="flex flex-col">
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-xl">{book.title}</CardTitle>
@@ -140,25 +141,50 @@ export default function BooksPage() {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent>
-                <p className="font-medium">By {book.author}</p>
-                {book.description && <p className="text-gray-500 mt-2 line-clamp-3">{book.description}</p>}
-                <div className="mt-4 flex items-center gap-2">
-                  <Badge variant="outline">{book.condition}</Badge>
-                  <Badge
-                    variant={
-                      book.status === "Available" ? "success" : book.status === "Reserved" ? "warning" : "secondary"
-                    }
-                  >
-                    {book.status}
-                  </Badge>
+              <CardContent className="flex-grow">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-shrink-0">
+                    {book.cover_image ? (
+                      <div className="relative w-24 h-36 overflow-hidden rounded-md border border-gray-200">
+                        <Image
+                          src={book.cover_image || "/placeholder.svg"}
+                          alt={`Cover for ${book.title}`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, 96px"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex w-24 h-36 flex-col items-center justify-center rounded-md border border-dashed border-gray-200 p-2">
+                        <BookOpen className="h-8 w-8 text-gray-400" />
+                        <p className="text-xs text-gray-500">No cover</p>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium">By {book.author}</p>
+                    {book.description && <p className="text-gray-500 mt-2 line-clamp-3">{book.description}</p>}
+                    <div className="mt-4 flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline">{book.condition}</Badge>
+                      <Badge
+                        variant={
+                          book.status === "Available" ? "success" : book.status === "Reserved" ? "warning" : "secondary"
+                        }
+                      >
+                        {book.status}
+                      </Badge>
+                      {book.listing_type === "Sell" && book.price && (
+                        <Badge variant="secondary">${book.price.toFixed(2)}</Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button variant="outline" size="sm">
                   View Details
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/books/edit/${book.id}`)}>
                   Edit
                 </Button>
               </CardFooter>
