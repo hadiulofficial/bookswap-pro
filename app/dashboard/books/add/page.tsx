@@ -7,15 +7,13 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { DashboardTitle } from "@/components/dashboard/title"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, ArrowLeft, BookPlus, Loader2, ImageIcon, Info } from "lucide-react"
+import { AlertCircle, ArrowLeft, BookPlus, Loader2, Info } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 export default function AddBookPage() {
   const { user } = useAuth()
@@ -33,19 +31,6 @@ export default function AddBookPage() {
   const [price, setPrice] = useState("")
   const [isbn, setIsbn] = useState("")
   const [category, setCategory] = useState("1")
-  const [language, setLanguage] = useState("English")
-  const [publishYear, setPublishYear] = useState("")
-  const [publisher, setPublisher] = useState("")
-  const [coverImage, setCoverImage] = useState<File | null>(null)
-  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null)
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0]
-      setCoverImage(file)
-      setCoverImagePreview(URL.createObjectURL(file))
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,12 +66,6 @@ export default function AddBookPage() {
         console.log("Using test user ID:", userId)
       }
 
-      // Prepare form data for image upload
-      const formData = new FormData()
-      if (coverImage) {
-        formData.append("coverImage", coverImage)
-      }
-
       // Add book data
       const bookData = {
         title,
@@ -97,9 +76,6 @@ export default function AddBookPage() {
         owner_id: userId,
         category_id: Number.parseInt(category),
         isbn: isbn || null,
-        language: language || "English",
-        publish_year: publishYear ? Number.parseInt(publishYear) : null,
-        publisher: publisher || null,
         price: listingType === "Sell" && price ? Number.parseFloat(price) : null,
       }
 
@@ -131,9 +107,6 @@ export default function AddBookPage() {
     }
   }
 
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 100 }, (_, i) => currentYear - i)
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -152,131 +125,162 @@ export default function AddBookPage() {
           </AlertDescription>
         </Alert>
       ) : (
-        <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="basic">Basic Information</TabsTrigger>
-            <TabsTrigger value="details">Additional Details</TabsTrigger>
-          </TabsList>
+        <Card className="overflow-hidden border-none shadow-lg">
+          <div className="bg-gradient-to-r from-emerald-500 to-blue-500 h-2"></div>
+          <CardContent className="p-6 pt-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          <form onSubmit={handleSubmit}>
-            {error && (
-              <Alert variant="destructive" className="my-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <TabsContent value="basic">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Book Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Book Title*</Label>
-                      <Input
-                        id="title"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Enter the book title"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="author">Author*</Label>
-                      <Input
-                        id="author"
-                        value={author}
-                        onChange={(e) => setAuthor(e.target.value)}
-                        placeholder="Enter the author's name"
-                        required
-                      />
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left column - Essential details */}
+                <div className="space-y-6">
+                  <div className="space-y-1">
+                    <Label htmlFor="title" className="text-base font-medium">
+                      Book Title*
+                    </Label>
+                    <Input
+                      id="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Enter the book title"
+                      className="h-12"
+                      required
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="author" className="text-base font-medium">
+                      Author*
+                    </Label>
+                    <Input
+                      id="author"
+                      value={author}
+                      onChange={(e) => setAuthor(e.target.value)}
+                      placeholder="Enter the author's name"
+                      className="h-12"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label htmlFor="description" className="text-base font-medium">
+                      Description
+                    </Label>
                     <Textarea
                       id="description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Enter a description of the book"
-                      rows={3}
+                      rows={5}
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="condition">Condition</Label>
-                      <Select value={condition} onValueChange={setCondition}>
-                        <SelectTrigger id="condition">
-                          <SelectValue placeholder="Select condition" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Like New">Like New</SelectItem>
-                          <SelectItem value="Very Good">Very Good</SelectItem>
-                          <SelectItem value="Good">Good</SelectItem>
-                          <SelectItem value="Fair">Fair</SelectItem>
-                          <SelectItem value="Poor">Poor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="isbn" className="text-base font-medium">
+                      ISBN
+                    </Label>
+                    <Input
+                      id="isbn"
+                      value={isbn}
+                      onChange={(e) => setIsbn(e.target.value)}
+                      placeholder="Enter ISBN (optional)"
+                      className="h-12"
+                    />
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category</Label>
-                      <Select value={category} onValueChange={setCategory}>
-                        <SelectTrigger id="category">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">Fiction</SelectItem>
-                          <SelectItem value="2">Non-Fiction</SelectItem>
-                          <SelectItem value="3">Science Fiction</SelectItem>
-                          <SelectItem value="4">Mystery</SelectItem>
-                          <SelectItem value="5">Biography</SelectItem>
-                          <SelectItem value="6">History</SelectItem>
-                          <SelectItem value="7">Self-Help</SelectItem>
-                          <SelectItem value="8">Business</SelectItem>
-                          <SelectItem value="9">Children's</SelectItem>
-                          <SelectItem value="10">Young Adult</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                {/* Right column - Listing details */}
+                <div className="space-y-6">
+                  <div className="space-y-1">
+                    <Label htmlFor="condition" className="text-base font-medium">
+                      Condition
+                    </Label>
+                    <Select value={condition} onValueChange={setCondition}>
+                      <SelectTrigger id="condition" className="h-12">
+                        <SelectValue placeholder="Select condition" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Like New">Like New</SelectItem>
+                        <SelectItem value="Very Good">Very Good</SelectItem>
+                        <SelectItem value="Good">Good</SelectItem>
+                        <SelectItem value="Fair">Fair</SelectItem>
+                        <SelectItem value="Poor">Poor</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Listing Type</Label>
-                    <RadioGroup
-                      value={listingType}
-                      onValueChange={setListingType}
-                      className="flex flex-col sm:flex-row gap-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Exchange" id="exchange" />
-                        <Label htmlFor="exchange" className="cursor-pointer">
-                          Exchange
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Sell" id="sell" />
-                        <Label htmlFor="sell" className="cursor-pointer">
-                          Sell
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Donate" id="donate" />
-                        <Label htmlFor="donate" className="cursor-pointer">
-                          Donate
-                        </Label>
-                      </div>
-                    </RadioGroup>
+                  <div className="space-y-1">
+                    <Label htmlFor="category" className="text-base font-medium">
+                      Category
+                    </Label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger id="category" className="h-12">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Fiction</SelectItem>
+                        <SelectItem value="2">Non-Fiction</SelectItem>
+                        <SelectItem value="3">Science Fiction</SelectItem>
+                        <SelectItem value="4">Mystery</SelectItem>
+                        <SelectItem value="5">Biography</SelectItem>
+                        <SelectItem value="6">History</SelectItem>
+                        <SelectItem value="7">Self-Help</SelectItem>
+                        <SelectItem value="8">Business</SelectItem>
+                        <SelectItem value="9">Children's</SelectItem>
+                        <SelectItem value="10">Young Adult</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-base font-medium">Listing Type</Label>
+                    <div className="grid grid-cols-3 gap-4">
+                      {["Exchange", "Sell", "Donate"].map((type) => (
+                        <div
+                          key={type}
+                          className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                            listingType === type
+                              ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
+                              : "hover:border-gray-300 dark:hover:border-gray-600"
+                          }`}
+                          onClick={() => setListingType(type)}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">{type}</span>
+                            <div
+                              className={`w-4 h-4 rounded-full border ${
+                                listingType === type
+                                  ? "border-emerald-500 bg-emerald-500"
+                                  : "border-gray-300 dark:border-gray-600"
+                              }`}
+                            >
+                              {listingType === type && (
+                                <div className="w-2 h-2 rounded-full bg-white m-auto mt-1"></div>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {type === "Exchange"
+                              ? "Swap for another book"
+                              : type === "Sell"
+                                ? "Set a price for your book"
+                                : "Give away for free"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {listingType === "Sell" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="price">Price ($)</Label>
+                    <div className="space-y-1">
+                      <Label htmlFor="price" className="text-base font-medium">
+                        Price ($)
+                      </Label>
                       <Input
                         id="price"
                         type="number"
@@ -285,148 +289,32 @@ export default function AddBookPage() {
                         value={price}
                         onChange={(e) => setPrice(e.target.value)}
                         placeholder="Enter the price"
+                        className="h-12"
                       />
                     </div>
                   )}
+                </div>
+              </div>
 
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => router.push("/dashboard/books")}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding Book...
-                        </>
-                      ) : (
-                        <>
-                          <BookPlus className="mr-2 h-4 w-4" /> Add Book
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="details">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Additional Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="isbn">ISBN</Label>
-                      <Input
-                        id="isbn"
-                        value={isbn}
-                        onChange={(e) => setIsbn(e.target.value)}
-                        placeholder="Enter ISBN (optional)"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="language">Language</Label>
-                      <Select value={language} onValueChange={setLanguage}>
-                        <SelectTrigger id="language">
-                          <SelectValue placeholder="Select language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="English">English</SelectItem>
-                          <SelectItem value="Spanish">Spanish</SelectItem>
-                          <SelectItem value="French">French</SelectItem>
-                          <SelectItem value="German">German</SelectItem>
-                          <SelectItem value="Chinese">Chinese</SelectItem>
-                          <SelectItem value="Japanese">Japanese</SelectItem>
-                          <SelectItem value="Russian">Russian</SelectItem>
-                          <SelectItem value="Arabic">Arabic</SelectItem>
-                          <SelectItem value="Hindi">Hindi</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="publishYear">Publication Year</Label>
-                      <Select value={publishYear} onValueChange={setPublishYear}>
-                        <SelectTrigger id="publishYear">
-                          <SelectValue placeholder="Select year (optional)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {years.map((year) => (
-                            <SelectItem key={year} value={year.toString()}>
-                              {year}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="publisher">Publisher</Label>
-                      <Input
-                        id="publisher"
-                        value={publisher}
-                        onChange={(e) => setPublisher(e.target.value)}
-                        placeholder="Enter publisher (optional)"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="coverImage">Cover Image</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                      <div>
-                        <Input
-                          id="coverImage"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          className="cursor-pointer"
-                        />
-                        <p className="text-sm text-gray-500 mt-1">Upload a cover image for your book (optional)</p>
-                      </div>
-
-                      <div className="flex justify-center">
-                        {coverImagePreview ? (
-                          <img
-                            src={coverImagePreview || "/placeholder.svg"}
-                            alt="Cover preview"
-                            className="h-40 object-contain border rounded-md"
-                          />
-                        ) : (
-                          <div className="h-40 w-32 border rounded-md flex items-center justify-center bg-gray-50 dark:bg-gray-800">
-                            <ImageIcon className="h-10 w-10 text-gray-300" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => router.push("/dashboard/books")}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding Book...
-                        </>
-                      ) : (
-                        <>
-                          <BookPlus className="mr-2 h-4 w-4" /> Add Book
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </form>
-        </Tabs>
+              <div className="pt-4 border-t flex justify-end space-x-3">
+                <Button type="button" variant="outline" onClick={() => router.push("/dashboard/books")}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting} className="px-8">
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
+                    </>
+                  ) : (
+                    <>
+                      <BookPlus className="mr-2 h-4 w-4" /> Add Book
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900">

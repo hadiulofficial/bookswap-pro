@@ -29,9 +29,6 @@ export async function POST(request: Request) {
       category_id: data.category_id || 1,
       status: "Available", // Correctly capitalized
       isbn: data.isbn || null,
-      language: data.language || "English",
-      publish_year: data.publish_year || null,
-      publisher: data.publisher || null,
       price: data.price || null,
     })
 
@@ -47,9 +44,6 @@ export async function POST(request: Request) {
       category_id: data.category_id || 1,
       status: "Available", // Correctly capitalized
       isbn: data.isbn || null,
-      language: data.language || "English",
-      publish_year: data.publish_year || null,
-      publisher: data.publisher || null,
       price: data.price || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
