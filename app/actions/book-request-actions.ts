@@ -134,12 +134,21 @@ export async function getBookRequests(userId: string, status?: string) {
     console.log("Getting book requests for owner:", userId)
     const supabase = createServerSupabaseClient()
 
+    // Use a raw query to debug what's happening
+    const { data: rawData, error: rawError } = await supabase.from("book_requests").select("*").eq("owner_id", userId)
+
+    console.log("Raw book requests data:", rawData)
+
+    if (rawError) {
+      console.error("Error fetching raw book requests:", rawError)
+    }
+
     let query = supabase
       .from("book_requests")
       .select(`
         *,
-        books(id, title, author, cover_image, listing_type),
-        profiles!book_requests_user_id_fkey(id, username, full_name, avatar_url)
+        books:book_id(id, title, author, cover_image, listing_type),
+        profiles:user_id(id, username, full_name, avatar_url)
       `)
       .eq("owner_id", userId)
 
@@ -155,6 +164,7 @@ export async function getBookRequests(userId: string, status?: string) {
     }
 
     console.log(`Found ${data?.length || 0} book requests for owner ${userId}`)
+    console.log("Book requests data:", data)
     return data || []
   } catch (error) {
     console.error("Exception fetching book requests:", error)
@@ -172,12 +182,21 @@ export async function getUserRequests(userId: string, status?: string) {
     console.log("Getting user requests for requester:", userId)
     const supabase = createServerSupabaseClient()
 
+    // Use a raw query to debug what's happening
+    const { data: rawData, error: rawError } = await supabase.from("book_requests").select("*").eq("user_id", userId)
+
+    console.log("Raw user requests data:", rawData)
+
+    if (rawError) {
+      console.error("Error fetching raw user requests:", rawError)
+    }
+
     let query = supabase
       .from("book_requests")
       .select(`
         *,
-        books(id, title, author, cover_image, listing_type),
-        profiles!book_requests_owner_id_fkey(id, username, full_name, avatar_url)
+        books:book_id(id, title, author, cover_image, listing_type),
+        profiles:owner_id(id, username, full_name, avatar_url)
       `)
       .eq("user_id", userId)
 
@@ -193,6 +212,7 @@ export async function getUserRequests(userId: string, status?: string) {
     }
 
     console.log(`Found ${data?.length || 0} user requests for requester ${userId}`)
+    console.log("User requests data:", data)
     return data || []
   } catch (error) {
     console.error("Exception fetching user requests:", error)
@@ -212,7 +232,7 @@ export async function updateRequestStatus(requestId: string, status: "approved" 
     // Check if the request exists and belongs to the user
     const { data: request, error: fetchError } = await supabase
       .from("book_requests")
-      .select("id, owner_id, user_id, book_id, status, books(title)")
+      .select("id, owner_id, user_id, book_id, status, books:book_id(title)")
       .eq("id", requestId)
       .single()
 

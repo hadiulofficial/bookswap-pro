@@ -38,11 +38,11 @@ export default function RequestsPage() {
       const incoming = await getBookRequests(user.id)
       const outgoing = await getUserRequests(user.id)
 
-      console.log("Incoming requests:", incoming.length)
-      console.log("Outgoing requests:", outgoing.length)
+      console.log("Incoming requests:", incoming)
+      console.log("Outgoing requests:", outgoing)
 
-      setIncomingRequests(incoming)
-      setOutgoingRequests(outgoing)
+      setIncomingRequests(incoming || [])
+      setOutgoingRequests(outgoing || [])
     } catch (error) {
       console.error("Error fetching requests:", error)
       toast({
@@ -159,6 +159,13 @@ export default function RequestsPage() {
     }
   }
 
+  // Helper function to safely access nested properties
+  const safeGet = (obj: any, path: string, fallback: any = undefined) => {
+    return path.split(".").reduce((prev, curr) => {
+      return prev && prev[curr] !== undefined ? prev[curr] : fallback
+    }, obj)
+  }
+
   if (!user) {
     return (
       <div className="p-6">
@@ -213,34 +220,35 @@ export default function RequestsPage() {
                     <div className="flex justify-between items-start mb-2">
                       <Link href={`/books/${request.book_id}`}>
                         <CardTitle className="text-lg hover:text-emerald-600 hover:underline">
-                          {request.books?.title || "Book Title"}
+                          {safeGet(request, "books.title", "Book Title")}
                         </CardTitle>
                       </Link>
                       {getStatusBadge(request.status)}
                     </div>
-                    <CardDescription>By {request.books?.author || "Unknown Author"}</CardDescription>
+                    <CardDescription>By {safeGet(request, "books.author", "Unknown Author")}</CardDescription>
                   </CardHeader>
 
                   <CardContent className="pt-4">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
-                        {request.profiles?.avatar_url ? (
+                        {safeGet(request, "profiles.avatar_url") ? (
                           <Image
-                            src={request.profiles.avatar_url || "/placeholder.svg"}
-                            alt={request.profiles.username || "User"}
+                            src={safeGet(request, "profiles.avatar_url", "/placeholder.svg") || "/placeholder.svg"}
+                            alt={safeGet(request, "profiles.username", "User")}
                             width={48}
                             height={48}
                             className="object-cover"
                           />
                         ) : (
                           <div className="w-12 h-12 flex items-center justify-center bg-emerald-100 text-emerald-800 text-sm font-medium">
-                            {(request.profiles?.username || "User").substring(0, 2).toUpperCase()}
+                            {safeGet(request, "profiles.username", "User").substring(0, 2).toUpperCase()}
                           </div>
                         )}
                       </div>
                       <div>
                         <p className="font-medium">
-                          {request.profiles?.full_name || request.profiles?.username || "Anonymous User"}
+                          {safeGet(request, "profiles.full_name") ||
+                            safeGet(request, "profiles.username", "Anonymous User")}
                         </p>
                         <p className="text-sm text-gray-500 flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
@@ -304,19 +312,20 @@ export default function RequestsPage() {
                     <div className="flex justify-between items-start mb-2">
                       <Link href={`/books/${request.book_id}`}>
                         <CardTitle className="text-lg hover:text-emerald-600 hover:underline">
-                          {request.books?.title || "Book Title"}
+                          {safeGet(request, "books.title", "Book Title")}
                         </CardTitle>
                       </Link>
                       {getStatusBadge(request.status)}
                     </div>
-                    <CardDescription>By {request.books?.author || "Unknown Author"}</CardDescription>
+                    <CardDescription>By {safeGet(request, "books.author", "Unknown Author")}</CardDescription>
                   </CardHeader>
 
                   <CardContent>
                     <div className="flex items-center gap-3 mb-3">
                       <p className="text-sm">
                         <span className="font-medium">Request to:</span>{" "}
-                        {request.profiles?.full_name || request.profiles?.username || "Anonymous User"}
+                        {safeGet(request, "profiles.full_name") ||
+                          safeGet(request, "profiles.username", "Anonymous User")}
                       </p>
                     </div>
 
