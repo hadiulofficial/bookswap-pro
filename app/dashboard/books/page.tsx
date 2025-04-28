@@ -58,7 +58,7 @@ export default function BooksPage() {
       const to = from + booksPerPage - 1
 
       // Start building the query
-      let query = supabase.from("books").select("*", { count: "exact" }).eq("owner_id", user?.id)
+      let query = supabase.from("books").select("*").eq("owner_id", user?.id)
 
       // Apply filters if any
       if (filterType !== "all") {
@@ -69,8 +69,24 @@ export default function BooksPage() {
         query = query.or(`title.ilike.%${searchQuery}%,author.ilike.%${searchQuery}%`)
       }
 
-      // Get count first
-      const { count } = await query.count()
+      // First, get the total count
+      const countQuery = supabase.from("books").select("id", { count: "exact" }).eq("owner_id", user?.id)
+
+      // Apply the same filters to the count query
+      if (filterType !== "all") {
+        countQuery.eq("listing_type", filterType)
+      }
+
+      if (searchQuery) {
+        countQuery.or(`title.ilike.%${searchQuery}%,author.ilike.%${searchQuery}%`)
+      }
+
+      const { count, error: countError } = await countQuery
+
+      if (countError) {
+        throw countError
+      }
+
       setTotalBooks(count || 0)
 
       // Then get paginated data
