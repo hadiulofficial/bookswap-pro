@@ -20,7 +20,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     // Get the book owner's ID
     const { data: book, error: bookError } = await supabase
       .from("books")
-      .select("owner_id, listing_type")
+      .select("owner_id, listing_type, status")
       .eq("id", bookId)
       .single()
 
@@ -32,9 +32,19 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
-    // Verify the book is listed for exchange - use case insensitive comparison
-    const bookListingType = book.listing_type.toLowerCase()
-    if (bookListingType !== "exchange" && bookListingType !== "swap") {
+    // Check if the book is available
+    if (book.status !== "available") {
+      return {
+        success: false,
+        error: "This book is no longer available",
+      }
+    }
+
+    // Verify the book is listed for exchange - more permissive check
+    const bookListingType = (book.listing_type || "").toLowerCase()
+    console.log("Book listing type:", bookListingType)
+
+    if (!bookListingType.includes("exchange") && !bookListingType.includes("swap")) {
       return {
         success: false,
         error: "This book is not available for exchange",
@@ -65,9 +75,11 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
-    // Use case insensitive comparison for listing type
-    const offeredBookListingType = offeredBook.listing_type.toLowerCase()
-    if (offeredBookListingType !== "exchange" && offeredBookListingType !== "swap") {
+    // More permissive check for listing type
+    const offeredBookListingType = (offeredBook.listing_type || "").toLowerCase()
+    console.log("Offered book listing type:", offeredBookListingType)
+
+    if (!offeredBookListingType.includes("exchange") && !offeredBookListingType.includes("swap")) {
       return {
         success: false,
         error: "The book you're offering is not available for exchange",
@@ -77,16 +89,30 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     // Check if a swap request already exists
     const { data: existingRequest, error: existingRequestError } = await supabase
       .from("book_swaps")
-      .select("id")
+      .select("id, status")
       .eq("requester_id", userId)
       .eq("requested_book_id", bookId)
       .eq("offered_book_id", offeredBookId)
       .maybeSingle()
 
     if (existingRequest) {
-      return {
-        success: false,
-        error: "You have already requested to swap this book",
+      if (existingRequest.status === "pending") {
+        return {
+          success: false,
+          error: "You have already requested to swap this book",
+        }
+      } else if (existingRequest.status === "approved") {
+        return {
+          success: false,
+          error: "This swap has already been approved",
+        }
+      } else if (existingRequest.status === "rejected") {
+        // If rejected, allow to request again
+        const { error: deleteError } = await supabase.from("book_swaps").delete().eq("id", existingRequest.id)
+
+        if (deleteError) {
+          console.error("Error deleting rejected swap request:", deleteError)
+        }
       }
     }
 
@@ -262,23 +288,29 @@ export async function getUserSwappableBooks(userId: string) {
       console.error("Error fetching all books:", allBooksError)
     }
 
-    // Use OR syntax for listing_type and make sure to use lowercase comparison
-    const { data, error } = await supabase
+    // Get all available books first
+    const { data: availableBooks, error: availableBooksError } = await supabase
       .from("books")
       .select("*")
       .eq("owner_id", userId)
       .eq("status", "available")
-      .or(`listing_type.ilike.%exchange%,listing_type.ilike.%swap%`)
       .order("created_at", { ascending: false })
 
-    console.log("Swappable books query result:", data)
-
-    if (error) {
-      console.error("Error fetching swappable books:", error)
+    if (availableBooksError) {
+      console.error("Error fetching available books:", availableBooksError)
       return []
     }
 
-    return data || []
+    // Filter for exchange books client-side
+    const exchangeBooks =
+      availableBooks?.filter((book) => {
+        const listingType = (book.listing_type || "").toLowerCase()
+        return listingType.includes("exchange") || listingType.includes("swap")
+      }) || []
+
+    console.log("Filtered exchange books:", exchangeBooks)
+
+    return exchangeBooks
   } catch (error) {
     console.error("Exception fetching swappable books:", error)
     return []

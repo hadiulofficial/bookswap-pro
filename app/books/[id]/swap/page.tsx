@@ -33,6 +33,7 @@ export default function SwapRequestPage() {
   const [message, setMessage] = useState("")
   const [myBooks, setMyBooks] = useState<any[]>([])
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -63,8 +64,9 @@ export default function SwapRequestPage() {
         throw new Error("Book not found")
       }
 
-      // Check if book is available for exchange
-      if (bookData.listing_type.toLowerCase() !== "exchange" && bookData.listing_type.toLowerCase() !== "swap") {
+      // Check if book is available for exchange - more permissive check
+      const listingType = bookData.listing_type?.toLowerCase() || ""
+      if (!listingType.includes("exchange") && !listingType.includes("swap")) {
         throw new Error("This book is not available for exchange")
       }
 
@@ -89,44 +91,44 @@ export default function SwapRequestPage() {
     try {
       console.log("Fetching books for user:", user.id)
 
-      // First, let's log all the user's books to debug
+      // First, let's get all the user's books
       const { data: allBooks, error: allBooksError } = await supabase
         .from("books")
-        .select("id, title, author, listing_type, status")
+        .select("id, title, author, listing_type, status, condition, cover_image")
         .eq("owner_id", user.id)
+        .eq("status", "available")
 
       console.log("All user books:", allBooks)
 
       if (allBooksError) {
         console.error("Error fetching all books:", allBooksError)
+        throw allBooksError
       }
 
-      // Now fetch only the exchange books
-      const { data, error } = await supabase
-        .from("books")
-        .select("*")
-        .eq("owner_id", user.id)
-        .eq("status", "available")
-        .or(`listing_type.eq.exchange,listing_type.eq.swap`)
-        .order("created_at", { ascending: false })
+      // Filter books for exchange client-side to ensure we catch all variations
+      const exchangeBooks =
+        allBooks?.filter((book) => {
+          const listingType = book.listing_type?.toLowerCase() || ""
+          return listingType.includes("exchange") || listingType.includes("swap")
+        }) || []
 
-      console.log("Exchange books query result:", data)
+      console.log("Filtered exchange books:", exchangeBooks)
 
-      if (error) {
-        throw error
-      }
+      // Set debug info
+      setDebugInfo(`Found ${allBooks?.length || 0} books, ${exchangeBooks.length} for exchange`)
 
-      setMyBooks(data || [])
+      // Set the books
+      setMyBooks(exchangeBooks)
 
       // If user has no books for exchange, show error
-      if (!data || data.length === 0) {
+      if (exchangeBooks.length === 0) {
         setError("You don't have any books available for exchange. Please add a book first.")
       }
     } catch (err: any) {
       console.error("Error fetching my books:", err)
       toast({
         title: "Error",
-        description: "Failed to load your books",
+        description: "Failed to load your books: " + (err.message || "Unknown error"),
         variant: "destructive",
       })
     }
@@ -212,6 +214,12 @@ export default function SwapRequestPage() {
               <h1 className="text-2xl font-bold mb-6 flex items-center">
                 <RefreshCw className="mr-2 h-5 w-5 text-emerald-600" /> Request Book Swap
               </h1>
+
+              {debugInfo && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-700 p-2 rounded-md mb-4 text-xs">
+                  Debug: {debugInfo}
+                </div>
+              )}
 
               {error ? (
                 <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6 flex items-start">
