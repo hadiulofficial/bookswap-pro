@@ -300,3 +300,4 @@ export interface Database {
     }
   }
 }
+export type BookCondition = Database['public']['Enums']['book_condition'];
