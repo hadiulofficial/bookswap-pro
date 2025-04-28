@@ -49,11 +49,8 @@ export default function SwapRequestPage() {
       setLoading(true)
       setError(null)
 
-      const { data: bookData, error: bookError } = await supabase
-        .from("books")
-        .select("*, profiles(id, username, full_name, location, created_at)")
-        .eq("id", bookId)
-        .single()
+      // Fetch the book first
+      const { data: bookData, error: bookError } = await supabase.from("books").select("*").eq("id", bookId).single()
 
       if (bookError) {
         throw bookError
@@ -73,8 +70,20 @@ export default function SwapRequestPage() {
         throw new Error("You cannot swap with your own book")
       }
 
+      // Now fetch the owner's profile separately
+      const { data: ownerData, error: ownerError } = await supabase
+        .from("profiles")
+        .select("id, username, full_name, location, created_at")
+        .eq("id", bookData.owner_id)
+        .single()
+
+      if (ownerError) {
+        console.error("Error fetching owner:", ownerError)
+        // Continue even if owner fetch fails
+      }
+
       setBook(bookData)
-      setOwner(bookData.profiles)
+      setOwner(ownerData || { id: bookData.owner_id })
     } catch (err: any) {
       console.error("Error fetching book details:", err)
       setError(err.message || "Failed to load book details")

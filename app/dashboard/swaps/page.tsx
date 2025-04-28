@@ -40,12 +40,7 @@ export default function SwapsPage() {
       // Fetch incoming swap requests (where user is the book owner)
       const { data: incomingData, error: incomingError } = await supabase
         .from("book_swaps")
-        .select(`
-          *,
-          requester:profiles!book_swaps_requester_id_fkey(id, username, full_name, avatar_url),
-          requested_book:books!book_swaps_requested_book_id_fkey(id, title, author, cover_image, condition),
-          offered_book:books!book_swaps_offered_book_id_fkey(id, title, author, cover_image, condition)
-        `)
+        .select("*")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
 
@@ -58,12 +53,7 @@ export default function SwapsPage() {
       // Fetch outgoing swap requests (where user is the requester)
       const { data: outgoingData, error: outgoingError } = await supabase
         .from("book_swaps")
-        .select(`
-          *,
-          owner:profiles!book_swaps_owner_id_fkey(id, username, full_name, avatar_url),
-          requested_book:books!book_swaps_requested_book_id_fkey(id, title, author, cover_image, condition),
-          offered_book:books!book_swaps_offered_book_id_fkey(id, title, author, cover_image, condition)
-        `)
+        .select("*")
         .eq("requester_id", user.id)
         .order("created_at", { ascending: false })
 
@@ -73,14 +63,54 @@ export default function SwapsPage() {
         return
       }
 
-      setIncomingSwaps(incomingData || [])
-      setOutgoingSwaps(outgoingData || [])
+      // Enrich the data separately to avoid relationship issues
+      const enrichedIncomingData = await enrichSwapData(incomingData || [])
+      const enrichedOutgoingData = await enrichSwapData(outgoingData || [])
+
+      setIncomingSwaps(enrichedIncomingData)
+      setOutgoingSwaps(enrichedOutgoingData)
     } catch (err) {
       console.error("Error fetching swap requests:", err)
       setError("Failed to load swap requests. Please try again.")
     } finally {
       setLoading(false)
     }
+  }
+
+  // Helper function to enrich swap data with related information
+  const enrichSwapData = async (swaps: any[]) => {
+    if (!swaps.length) return []
+
+    // Get all requester and owner IDs
+    const userIds = [...new Set([...swaps.map((s) => s.requester_id), ...swaps.map((s) => s.owner_id)])]
+
+    // Get all book IDs
+    const bookIds = [...new Set([...swaps.map((s) => s.requested_book_id), ...swaps.map((s) => s.offered_book_id)])]
+
+    // Fetch profiles in bulk
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, username, full_name, avatar_url")
+      .in("id", userIds)
+
+    // Fetch books in bulk
+    const { data: books } = await supabase
+      .from("books")
+      .select("id, title, author, cover_image, condition")
+      .in("id", bookIds)
+
+    // Create lookup maps
+    const profileMap = (profiles || []).reduce((acc, profile) => ({ ...acc, [profile.id]: profile }), {})
+    const bookMap = (books || []).reduce((acc, book) => ({ ...acc, [book.id]: book }), {})
+
+    // Enrich each swap with related data
+    return swaps.map((swap) => ({
+      ...swap,
+      requester: profileMap[swap.requester_id] || null,
+      owner: profileMap[swap.owner_id] || null,
+      requested_book: bookMap[swap.requested_book_id] || null,
+      offered_book: bookMap[swap.offered_book_id] || null,
+    }))
   }
 
   const handleUpdateStatus = async (swapId: string, status: "approved" | "rejected") => {

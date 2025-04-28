@@ -250,18 +250,6 @@ export async function getUserSwappableBooks(userId: string) {
 
     const supabase = createServerSupabaseClient()
 
-    // Log all books for debugging
-    const { data: allBooks, error: allBooksError } = await supabase
-      .from("books")
-      .select("id, title, listing_type, status")
-      .eq("owner_id", userId)
-
-    console.log("All user books:", allBooks)
-
-    if (allBooksError) {
-      console.error("Error fetching all books:", allBooksError)
-    }
-
     // Use OR syntax for listing_type and make sure to use lowercase comparison
     const { data, error } = await supabase
       .from("books")
