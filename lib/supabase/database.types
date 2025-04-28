@@ -302,3 +302,5 @@ export interface Database {
 }
 
 export type PublicSchema = Database['public']
+
+export { Database }
