@@ -1,11 +1,12 @@
 "use server"
-
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { v4 as uuidv4 } from "uuid"
+import { VALID_CONDITIONS as VALID_CONDITIONS_IMPORTED } from "@/lib/constants"
 
-// Define the valid conditions based on the database constraint
-export const VALID_CONDITIONS = ["New", "Like New", "Very Good", "Good", "Acceptable"] as const
+// Re-export the constant to maintain backward compatibility
+// This is a workaround until we update all imports
+export const VALID_CONDITIONS = VALID_CONDITIONS_IMPORTED
 
 export type BookFormValues = {
   title: string
