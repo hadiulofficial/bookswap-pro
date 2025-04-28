@@ -24,16 +24,15 @@ export default function SwapsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user) {
-      router.push("/login")
+    if (!user?.id) {
       return
     }
 
     fetchSwapRequests()
-  }, [user, router])
+  }, [user])
 
   const fetchSwapRequests = async () => {
-    if (!user) return
+    if (!user?.id) return
 
     try {
       setLoading(true)
@@ -43,7 +42,14 @@ export default function SwapsPage() {
       const { data: incomingData, error: incomingError } = await supabase
         .from("book_swaps")
         .select(`
-          *,
+          id,
+          status,
+          message,
+          created_at,
+          requester_id,
+          owner_id,
+          requested_book_id,
+          offered_book_id,
           requester:requester_id(id, username, full_name, avatar_url),
           requested_book:requested_book_id(id, title, author, cover_image, condition),
           offered_book:offered_book_id(id, title, author, cover_image, condition)
@@ -52,14 +58,23 @@ export default function SwapsPage() {
         .order("created_at", { ascending: false })
 
       if (incomingError) {
-        throw incomingError
+        console.error("Error fetching incoming swaps:", incomingError)
+        setError("Failed to load swap requests. Please try again.")
+        return
       }
 
       // Fetch outgoing swap requests (where user is the requester)
       const { data: outgoingData, error: outgoingError } = await supabase
         .from("book_swaps")
         .select(`
-          *,
+          id,
+          status,
+          message,
+          created_at,
+          requester_id,
+          owner_id,
+          requested_book_id,
+          offered_book_id,
           owner:owner_id(id, username, full_name, avatar_url),
           requested_book:requested_book_id(id, title, author, cover_image, condition),
           offered_book:offered_book_id(id, title, author, cover_image, condition)
@@ -68,12 +83,14 @@ export default function SwapsPage() {
         .order("created_at", { ascending: false })
 
       if (outgoingError) {
-        throw outgoingError
+        console.error("Error fetching outgoing swaps:", outgoingError)
+        setError("Failed to load swap requests. Please try again.")
+        return
       }
 
       setIncomingSwaps(incomingData || [])
       setOutgoingSwaps(outgoingData || [])
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error fetching swap requests:", err)
       setError("Failed to load swap requests. Please try again.")
     } finally {
@@ -105,7 +122,7 @@ export default function SwapsPage() {
           variant: "destructive",
         })
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error updating swap status:", err)
       toast({
         title: "Error",
@@ -122,19 +139,28 @@ export default function SwapsPage() {
       case "pending":
         return (
           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-            Pending
+            <div className="flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              <span>Pending</span>
+            </div>
           </Badge>
         )
       case "approved":
         return (
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            Approved
+            <div className="flex items-center gap-1">
+              <Check className="w-3 h-3" />
+              <span>Approved</span>
+            </div>
           </Badge>
         )
       case "rejected":
         return (
           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-            Rejected
+            <div className="flex items-center gap-1">
+              <X className="w-3 h-3" />
+              <span>Rejected</span>
+            </div>
           </Badge>
         )
       default:
@@ -143,41 +169,57 @@ export default function SwapsPage() {
   }
 
   if (!user) {
-    return null
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-3" />
+        <p className="text-gray-500 text-sm">Checking authentication...</p>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <DashboardHeader heading="Book Swaps" text="Manage your book swap requests" />
 
       {error ? (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md flex items-start">
           <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1">
             <p className="font-medium">Error loading swap requests</p>
             <p className="text-sm mt-1">{error}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchSwapRequests}>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchSwapRequests()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
               Try Again
             </Button>
           </div>
         </div>
       ) : loading ? (
-        <div className="flex flex-col items-center justify-center py-12">
+        <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-lg">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-3" />
           <p className="text-gray-500 text-sm">Loading swap requests...</p>
         </div>
       ) : (
         <Tabs defaultValue="incoming" className="w-full">
           <TabsList className="mb-6">
-            <TabsTrigger value="incoming">
-              Incoming Requests {incomingSwaps.length > 0 && `(${incomingSwaps.length})`}
+            <TabsTrigger value="incoming" className="relative">
+              Incoming Requests
+              {incomingSwaps.length > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                  {incomingSwaps.length}
+                </span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="outgoing">
-              Outgoing Requests {outgoingSwaps.length > 0 && `(${outgoingSwaps.length})`}
+            <TabsTrigger value="outgoing" className="relative">
+              Outgoing Requests
+              {outgoingSwaps.length > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                  {outgoingSwaps.length}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="incoming">
+          <TabsContent value="incoming" className="space-y-4 mt-2">
             {incomingSwaps.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
                 <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -208,11 +250,14 @@ export default function SwapsPage() {
                         <div className="flex flex-col md:flex-row gap-6">
                           {/* Their book (offered) */}
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-500 mb-2">Their Book:</p>
+                            <div className="flex items-center gap-1 text-sm font-medium text-gray-500 mb-2">
+                              <BookOpen className="h-4 w-4" />
+                              <span>Their Book:</span>
+                            </div>
                             <div className="flex gap-3">
                               <div className="flex-shrink-0">
                                 {swap.offered_book?.cover_image ? (
-                                  <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200">
+                                  <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200 shadow-sm">
                                     <Image
                                       src={swap.offered_book.cover_image || "/placeholder.svg"}
                                       alt={`Cover for ${swap.offered_book.title}`}
@@ -243,11 +288,14 @@ export default function SwapsPage() {
 
                           {/* Your book (requested) */}
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-500 mb-2">Your Book:</p>
+                            <div className="flex items-center gap-1 text-sm font-medium text-gray-500 mb-2">
+                              <BookOpen className="h-4 w-4" />
+                              <span>Your Book:</span>
+                            </div>
                             <div className="flex gap-3">
                               <div className="flex-shrink-0">
                                 {swap.requested_book?.cover_image ? (
-                                  <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200">
+                                  <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200 shadow-sm">
                                     <Image
                                       src={swap.requested_book.cover_image || "/placeholder.svg"}
                                       alt={`Cover for ${swap.requested_book.title}`}
@@ -299,6 +347,7 @@ export default function SwapsPage() {
                               size="sm"
                               onClick={() => handleUpdateStatus(swap.id, "approved")}
                               disabled={!!processingSwap}
+                              className="bg-emerald-600 hover:bg-emerald-700"
                             >
                               {processingSwap === swap.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -317,7 +366,7 @@ export default function SwapsPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="outgoing">
+          <TabsContent value="outgoing" className="space-y-4 mt-2">
             {outgoingSwaps.length === 0 ? (
               <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed">
                 <RefreshCw className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -348,11 +397,14 @@ export default function SwapsPage() {
                         <div className="flex flex-col md:flex-row gap-6">
                           {/* Your book (offered) */}
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-500 mb-2">Your Book:</p>
+                            <div className="flex items-center gap-1 text-sm font-medium text-gray-500 mb-2">
+                              <BookOpen className="h-4 w-4" />
+                              <span>Your Book:</span>
+                            </div>
                             <div className="flex gap-3">
                               <div className="flex-shrink-0">
                                 {swap.offered_book?.cover_image ? (
-                                  <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200">
+                                  <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200 shadow-sm">
                                     <Image
                                       src={swap.offered_book.cover_image || "/placeholder.svg"}
                                       alt={`Cover for ${swap.offered_book.title}`}
@@ -383,11 +435,14 @@ export default function SwapsPage() {
 
                           {/* Their book (requested) */}
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-500 mb-2">Their Book:</p>
+                            <div className="flex items-center gap-1 text-sm font-medium text-gray-500 mb-2">
+                              <BookOpen className="h-4 w-4" />
+                              <span>Their Book:</span>
+                            </div>
                             <div className="flex gap-3">
                               <div className="flex-shrink-0">
                                 {swap.requested_book?.cover_image ? (
-                                  <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200">
+                                  <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200 shadow-sm">
                                     <Image
                                       src={swap.requested_book.cover_image || "/placeholder.svg"}
                                       alt={`Cover for ${swap.requested_book.title}`}
