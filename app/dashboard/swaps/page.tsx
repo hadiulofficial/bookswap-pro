@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "@/contexts/auth-context"
-import { DashboardHeader } from "@/components/dashboard/header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -42,17 +41,10 @@ export default function SwapsPage() {
       const { data: incomingData, error: incomingError } = await supabase
         .from("book_swaps")
         .select(`
-          id,
-          status,
-          message,
-          created_at,
-          requester_id,
-          owner_id,
-          requested_book_id,
-          offered_book_id,
-          requester:requester_id(id, username, full_name, avatar_url),
-          requested_book:requested_book_id(id, title, author, cover_image, condition),
-          offered_book:offered_book_id(id, title, author, cover_image, condition)
+          *,
+          requester:profiles!book_swaps_requester_id_fkey(id, username, full_name, avatar_url),
+          requested_book:books!book_swaps_requested_book_id_fkey(id, title, author, cover_image, condition),
+          offered_book:books!book_swaps_offered_book_id_fkey(id, title, author, cover_image, condition)
         `)
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
@@ -67,17 +59,10 @@ export default function SwapsPage() {
       const { data: outgoingData, error: outgoingError } = await supabase
         .from("book_swaps")
         .select(`
-          id,
-          status,
-          message,
-          created_at,
-          requester_id,
-          owner_id,
-          requested_book_id,
-          offered_book_id,
-          owner:owner_id(id, username, full_name, avatar_url),
-          requested_book:requested_book_id(id, title, author, cover_image, condition),
-          offered_book:offered_book_id(id, title, author, cover_image, condition)
+          *,
+          owner:profiles!book_swaps_owner_id_fkey(id, username, full_name, avatar_url),
+          requested_book:books!book_swaps_requested_book_id_fkey(id, title, author, cover_image, condition),
+          offered_book:books!book_swaps_offered_book_id_fkey(id, title, author, cover_image, condition)
         `)
         .eq("requester_id", user.id)
         .order("created_at", { ascending: false })
@@ -179,7 +164,10 @@ export default function SwapsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <DashboardHeader heading="Book Swaps" text="Manage your book swap requests" />
+      <div className="flex flex-col gap-1.5">
+        <h2 className="text-2xl font-bold tracking-tight">Book Swaps</h2>
+        <p className="text-muted-foreground">Manage your book swap requests</p>
+      </div>
 
       {error ? (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md flex items-start">
