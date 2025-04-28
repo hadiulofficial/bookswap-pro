@@ -13,13 +13,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DashboardTitle } from "@/components/dashboard/title"
 import { BookUpload } from "@/components/dashboard/book-upload"
-import { VALID_CONDITIONS, updateBook } from "@/app/actions/book-actions"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createClientSupabaseClient } from "@/lib/supabase/client"
 import { Skeleton } from "@/components/ui/skeleton"
 
-// Define the form interface instead of using Zod
+// Define the valid conditions
+const VALID_CONDITIONS = ["New", "Like New", "Very Good", "Good", "Acceptable"]
+
+// Define the form interface
 interface BookFormValues {
   title: string
   author: string
@@ -33,11 +35,6 @@ interface BookFormValues {
   user_id: string
 }
 
-// Create a safe version of VALID_CONDITIONS
-const safeConditions = Array.isArray(VALID_CONDITIONS)
-  ? VALID_CONDITIONS
-  : ["New", "Like New", "Very Good", "Good", "Acceptable"]
-
 export default function EditBookPage({ params }: { params: { id: string } }) {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
@@ -48,7 +45,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
   const [bookNotFound, setBookNotFound] = useState(false)
   const supabase = createClientSupabaseClient()
 
-  // Initialize the form without zodResolver
+  // Initialize the form
   const form = useForm<BookFormValues>({
     defaultValues: {
       title: "",
@@ -185,8 +182,19 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       values.description = values.description || null
       values.cover_image = values.cover_image || null
 
-      // Call the server action to update the book
-      const result = await updateBook(params.id, values)
+      // Call the API route to update the book
+      const response = await fetch("/api/books/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookId: params.id,
+          data: values,
+        }),
+      })
+
+      const result = await response.json()
 
       if (!result.success) {
         throw new Error(result.error || "Failed to update book")
@@ -442,7 +450,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {safeConditions.map((condition) => (
+                              {VALID_CONDITIONS.map((condition) => (
                                 <SelectItem key={condition} value={condition}>
                                   {condition}
                                 </SelectItem>
