@@ -5,15 +5,27 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { BookOpen, RefreshCw, Users, BookMarked, User, ArrowUp, ArrowDown, Plus, MessageSquare } from "lucide-react"
+import { BookOpen, RefreshCw, BookMarked, ArrowUp, Plus, MessageSquare, DollarSign, BarChart3 } from "lucide-react"
 import { DashboardTitle } from "@/components/dashboard/title"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { supabase } from "@/lib/supabase/client"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function DashboardPage() {
   const { user, profile, isLoading } = useAuth()
   const router = useRouter()
   const [isPageLoaded, setIsPageLoaded] = useState(false)
+  const [dashboardData, setDashboardData] = useState({
+    totalBooks: 0,
+    wishlistItems: 0,
+    soldBooks: 0,
+    donatedBooks: 0,
+    activeSwaps: 0,
+    booksByCategory: [] as { category: string; count: number; color: string }[],
+    recentActivity: [] as any[],
+  })
+  const [isDataLoading, setIsDataLoading] = useState(true)
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -28,6 +40,108 @@ export default function DashboardPage() {
     return () => clearTimeout(timer)
   }, [user, isLoading, router])
 
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData()
+    }
+  }, [user])
+
+  const fetchDashboardData = async () => {
+    setIsDataLoading(true)
+    try {
+      // Fetch total books
+      const { data: booksData, error: booksError } = await supabase
+        .from("books")
+        .select("id, listing_type, status")
+        .eq("owner_id", user?.id)
+
+      if (booksError) throw booksError
+
+      // Fetch wishlist items
+      const { data: wishlistData, error: wishlistError } = await supabase
+        .from("wishlists")
+        .select("id")
+        .eq("user_id", user?.id)
+
+      if (wishlistError) throw wishlistError
+
+      // Calculate sold books
+      const soldBooks = booksData?.filter((book) => book.listing_type === "Sell" && book.status === "sold").length || 0
+
+      // Calculate donated books
+      const donatedBooks =
+        booksData?.filter((book) => book.listing_type === "Donate" && book.status === "donated").length || 0
+
+      // Fetch active swaps
+      const { data: swapsData, error: swapsError } = await supabase
+        .from("book_swaps")
+        .select("id")
+        .eq("owner_id", user?.id)
+        .eq("status", "pending")
+
+      if (swapsError) throw swapsError
+
+      // Fetch books by category
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("books")
+        .select("category_id")
+        .eq("owner_id", user?.id)
+
+      if (categoriesError) throw categoriesError
+
+      // Count books by category
+      const categoryMap = new Map()
+      categoriesData?.forEach((book) => {
+        const categoryId = book.category_id
+        categoryMap.set(categoryId, (categoryMap.get(categoryId) || 0) + 1)
+      })
+
+      // Map category IDs to names and colors
+      const categoryColors = [
+        { id: 1, name: "Fiction", color: "bg-emerald-500" },
+        { id: 2, name: "Non-Fiction", color: "bg-blue-500" },
+        { id: 3, name: "Science Fiction", color: "bg-purple-500" },
+        { id: 4, name: "Mystery", color: "bg-amber-500" },
+        { id: 5, name: "Biography", color: "bg-pink-500" },
+        { id: 6, name: "History", color: "bg-indigo-500" },
+        { id: 7, name: "Self-Help", color: "bg-red-500" },
+        { id: 8, name: "Business", color: "bg-cyan-500" },
+        { id: 9, name: "Children's", color: "bg-lime-500" },
+        { id: 10, name: "Young Adult", color: "bg-orange-500" },
+      ]
+
+      const booksByCategory = Array.from(categoryMap.entries())
+        .map(([categoryId, count]) => {
+          const category = categoryColors.find((c) => c.id === categoryId) || {
+            name: `Category ${categoryId}`,
+            color: "bg-gray-500",
+          }
+          return {
+            category: category.name,
+            count: count as number,
+            color: category.color,
+          }
+        })
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5) // Top 5 categories
+
+      // Set dashboard data
+      setDashboardData({
+        totalBooks: booksData?.length || 0,
+        wishlistItems: wishlistData?.length || 0,
+        soldBooks,
+        donatedBooks,
+        activeSwaps: swapsData?.length || 0,
+        booksByCategory,
+        recentActivity: [], // We'll use mock data for now
+      })
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+    } finally {
+      setIsDataLoading(false)
+    }
+  }
+
   // Show loading state only if auth is still loading and page hasn't been force-loaded
   if ((isLoading || !user) && !isPageLoaded) {
     return (
@@ -40,6 +154,34 @@ export default function DashboardPage() {
   // Get user display name safely
   const displayName = profile?.full_name || profile?.username || user?.email?.split("@")[0] || "User"
 
+  // Recent activity data (mock data for now)
+  const recentActivity = [
+    {
+      title: "New swap request",
+      description: "Jane Smith wants to swap 'The Great Gatsby'",
+      time: "2 hours ago",
+      icon: <RefreshCw className="h-4 w-4 text-blue-500" />,
+    },
+    {
+      title: "Book listed",
+      description: "You listed 'To Kill a Mockingbird'",
+      time: "Yesterday",
+      icon: <BookOpen className="h-4 w-4 text-emerald-500" />,
+    },
+    {
+      title: "New message",
+      description: "Michael Brown sent you a message",
+      time: "2 days ago",
+      icon: <MessageSquare className="h-4 w-4 text-purple-500" />,
+    },
+    {
+      title: "Swap completed",
+      description: "Swap with Alex Johnson completed",
+      time: "1 week ago",
+      icon: <RefreshCw className="h-4 w-4 text-blue-500" />,
+    },
+  ]
+
   return (
     <div className="space-y-8">
       <DashboardTitle
@@ -48,7 +190,7 @@ export default function DashboardPage() {
       />
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
+        <TabsList className="bg-white dark:bg-gray-800 border">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -56,7 +198,7 @@ export default function DashboardPage() {
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-l-4 border-l-emerald-500">
+            <Card className="border-l-4 border-l-emerald-500 hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Books</CardTitle>
                 <div className="rounded-full bg-emerald-100 p-2 dark:bg-emerald-800/30">
@@ -64,16 +206,22 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">24</div>
-                <div className="flex items-center text-xs text-gray-500 mt-1">
-                  <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
-                  <span className="text-emerald-500 font-medium">12%</span>
-                  <span className="ml-1">from last month</span>
-                </div>
+                {isDataLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{dashboardData.totalBooks}</div>
+                    <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
+                      <span className="text-emerald-500 font-medium">12%</span>
+                      <span className="ml-1">from last month</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-blue-500">
+            <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Active Swaps</CardTitle>
                 <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-800/30">
@@ -81,33 +229,22 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">7</div>
-                <div className="flex items-center text-xs text-gray-500 mt-1">
-                  <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
-                  <span className="text-emerald-500 font-medium">18%</span>
-                  <span className="ml-1">from last month</span>
-                </div>
+                {isDataLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{dashboardData.activeSwaps}</div>
+                    <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
+                      <span className="text-emerald-500 font-medium">18%</span>
+                      <span className="ml-1">from last month</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
-            <Card className="border-l-4 border-l-purple-500">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Profile Views</CardTitle>
-                <div className="rounded-full bg-purple-100 p-2 dark:bg-purple-800/30">
-                  <Users className="h-4 w-4 text-purple-600" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">142</div>
-                <div className="flex items-center text-xs text-gray-500 mt-1">
-                  <ArrowDown className="h-3 w-3 text-red-500 mr-1" />
-                  <span className="text-red-500 font-medium">4%</span>
-                  <span className="ml-1">from last month</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-amber-500">
+            <Card className="border-l-4 border-l-amber-500 hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Wishlist Items</CardTitle>
                 <div className="rounded-full bg-amber-100 p-2 dark:bg-amber-800/30">
@@ -115,18 +252,47 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">16</div>
-                <div className="flex items-center text-xs text-gray-500 mt-1">
-                  <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
-                  <span className="text-emerald-500 font-medium">8%</span>
-                  <span className="ml-1">from last month</span>
+                {isDataLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{dashboardData.wishlistItems}</div>
+                    <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
+                      <span className="text-emerald-500 font-medium">8%</span>
+                      <span className="ml-1">from last month</span>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-green-500 hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Books Sold</CardTitle>
+                <div className="rounded-full bg-green-100 p-2 dark:bg-green-800/30">
+                  <DollarSign className="h-4 w-4 text-green-600" />
                 </div>
+              </CardHeader>
+              <CardContent>
+                {isDataLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{dashboardData.soldBooks}</div>
+                    <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <ArrowUp className="h-3 w-3 text-emerald-500 mr-1" />
+                      <span className="text-emerald-500 font-medium">24%</span>
+                      <span className="ml-1">from last month</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="md:col-span-4">
+            <Card className="md:col-span-4 hover:shadow-md transition-shadow">
               <CardHeader>
                 <CardTitle>Book Activity</CardTitle>
                 <CardDescription>Your book listing activity over time</CardDescription>
@@ -168,7 +334,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            <Card className="md:col-span-3">
+            <Card className="md:col-span-3 hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <CardTitle>Recent Activity</CardTitle>
@@ -180,32 +346,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    {
-                      title: "New swap request",
-                      description: "Jane Smith wants to swap 'The Great Gatsby'",
-                      time: "2 hours ago",
-                      icon: <RefreshCw className="h-4 w-4 text-blue-500" />,
-                    },
-                    {
-                      title: "Book listed",
-                      description: "You listed 'To Kill a Mockingbird'",
-                      time: "Yesterday",
-                      icon: <BookOpen className="h-4 w-4 text-emerald-500" />,
-                    },
-                    {
-                      title: "New message",
-                      description: "Michael Brown sent you a message",
-                      time: "2 days ago",
-                      icon: <MessageSquare className="h-4 w-4 text-purple-500" />,
-                    },
-                    {
-                      title: "Swap completed",
-                      description: "Swap with Alex Johnson completed",
-                      time: "1 week ago",
-                      icon: <RefreshCw className="h-4 w-4 text-blue-500" />,
-                    },
-                  ].map((item, i) => (
+                  {recentActivity.map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="rounded-full bg-gray-100 p-2 dark:bg-gray-800">{item.icon}</div>
                       <div className="flex-1">
@@ -221,7 +362,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
+            <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <CardTitle>Book Statistics</CardTitle>
@@ -232,29 +373,49 @@ export default function DashboardPage() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { category: "Fiction", count: 12, color: "bg-emerald-500" },
-                    { category: "Non-Fiction", count: 5, color: "bg-blue-500" },
-                    { category: "Science Fiction", count: 3, color: "bg-purple-500" },
-                    { category: "Biography", count: 2, color: "bg-amber-500" },
-                    { category: "Other", count: 2, color: "bg-gray-500" },
-                  ].map((item, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">{item.category}</span>
-                        <span className="text-sm font-medium">{item.count}</span>
+                {isDataLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="flex justify-between">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-8" />
+                        </div>
+                        <Skeleton className="h-2 w-full" />
                       </div>
-                      <div className="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                        <div className={`h-full ${item.color}`} style={{ width: `${(item.count / 24) * 100}%` }}></div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {dashboardData.booksByCategory.length > 0 ? (
+                      dashboardData.booksByCategory.map((item, i) => (
+                        <div key={i} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">{item.category}</span>
+                            <span className="text-sm font-medium">{item.count}</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${item.color}`}
+                              style={{
+                                width: `${(item.count / dashboardData.totalBooks) * 100}%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <BarChart3 className="h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">No books listed yet</p>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            <Card className="md:col-span-2">
+            <Card className="md:col-span-2 hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <CardTitle>Quick Actions</CardTitle>
@@ -265,15 +426,15 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Button
                     variant="outline"
-                    className="flex flex-col h-24 items-center justify-center"
-                    onClick={() => router.push("/dashboard/books/new")}
+                    className="flex flex-col h-24 items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-colors"
+                    onClick={() => router.push("/dashboard/books/add")}
                   >
                     <Plus className="h-8 w-8 mb-2 text-emerald-500" />
                     <span>Add Book</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex flex-col h-24 items-center justify-center"
+                    className="flex flex-col h-24 items-center justify-center hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-colors"
                     onClick={() => router.push("/dashboard/wishlist")}
                   >
                     <BookMarked className="h-8 w-8 mb-2 text-amber-500" />
@@ -281,19 +442,19 @@ export default function DashboardPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex flex-col h-24 items-center justify-center"
-                    onClick={() => router.push("/dashboard/messages")}
+                    className="flex flex-col h-24 items-center justify-center hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                    onClick={() => router.push("/dashboard/swaps")}
                   >
-                    <MessageSquare className="h-8 w-8 mb-2 text-purple-500" />
-                    <span>Messages</span>
+                    <RefreshCw className="h-8 w-8 mb-2 text-blue-500" />
+                    <span>Swaps</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex flex-col h-24 items-center justify-center"
-                    onClick={() => router.push("/dashboard/profile")}
+                    className="flex flex-col h-24 items-center justify-center hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors"
+                    onClick={() => router.push("/dashboard/books")}
                   >
-                    <User className="h-8 w-8 mb-2 text-blue-500" />
-                    <span>Profile</span>
+                    <BookOpen className="h-8 w-8 mb-2 text-purple-500" />
+                    <span>My Books</span>
                   </Button>
                 </div>
               </CardContent>
