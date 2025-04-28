@@ -175,21 +175,21 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       // If listing type is not Sale, set price to null
       if (values.listing_type !== "Sale") {
         values.price = null
+      } else if (values.price === undefined) {
+        // Ensure price is at least 0 for sale items
+        values.price = 0
       }
 
-      // Convert listing_type to match database format if needed
-      let listingType = values.listing_type
-      if (listingType === "Exchange") listingType = "swap" as any
-      if (listingType === "Sale") listingType = "sale" as any
-      if (listingType === "Donation") listingType = "donation" as any
-
-      values.listing_type = listingType as any
+      // Ensure all optional fields are properly handled
+      values.isbn = values.isbn || null
+      values.description = values.description || null
+      values.cover_image = values.cover_image || null
 
       // Call the server action to update the book
       const result = await updateBook(params.id, values)
 
       if (!result.success) {
-        throw new Error(result.error)
+        throw new Error(result.error || "Failed to update book")
       }
 
       // Redirect to the books page
@@ -288,7 +288,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                         <FormItem>
                           <FormLabel>ISBN (Optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter ISBN" {...field} />
+                            <Input placeholder="Enter ISBN" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormDescription>International Standard Book Number, if available</FormDescription>
                           <FormMessage />
@@ -307,6 +307,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                               placeholder="Enter a brief description of the book"
                               className="resize-none"
                               {...field}
+                              value={field.value || ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -329,7 +330,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                           <BookUpload
                             onImageUploaded={handleImageUploaded}
                             existingImageUrl={field.value}
-                            value={field.value}
+                            value={field.value || ""}
                             onChange={field.onChange}
                           />
                         </FormControl>
@@ -416,10 +417,10 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                                 placeholder="Enter price"
                                 {...field}
                                 onChange={(e) => {
-                                  const value = e.target.value ? Number.parseFloat(e.target.value) : null
+                                  const value = e.target.value ? Number.parseFloat(e.target.value) : 0
                                   field.onChange(value)
                                 }}
-                                value={field.value === null ? "" : field.value}
+                                value={field.value === null ? "0" : field.value}
                               />
                             </FormControl>
                             <FormMessage />

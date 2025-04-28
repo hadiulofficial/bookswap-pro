@@ -161,22 +161,22 @@ export async function updateBook(bookId: string, data: BookFormValues) {
 
     console.log("Converted listing type:", listingType)
 
+    // Prepare update data with proper null handling
+    const updateData = {
+      title: data.title,
+      author: data.author,
+      isbn: data.isbn || null,
+      description: data.description || null,
+      condition: data.condition,
+      cover_image: data.cover_image || null,
+      listing_type: listingType,
+      price: listingType === "sale" ? data.price || 0 : null,
+      category_id: data.category_id,
+      updated_at: new Date().toISOString(),
+    }
+
     // Update the book in the database
-    const { error } = await supabase
-      .from("books")
-      .update({
-        title: data.title,
-        author: data.author,
-        isbn: data.isbn || null,
-        description: data.description || null,
-        condition: data.condition,
-        cover_image: data.cover_image || null,
-        listing_type: listingType,
-        price: listingType === "sale" ? data.price : null,
-        category_id: data.category_id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", bookId)
+    const { error } = await supabase.from("books").update(updateData).eq("id", bookId)
 
     if (error) {
       console.error("Server: Error updating book:", error)
