@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -19,20 +17,21 @@ import { VALID_CONDITIONS, updateBook } from "@/app/actions/book-actions"
 import { Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { createClientSupabaseClient } from "@/lib/supabase/client"
+import { Skeleton } from "@/components/ui/skeleton"
 
-// Define the form schema with Zod
-const formSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  author: z.string().min(1, "Author is required"),
-  isbn: z.string().optional(),
-  description: z.string().optional(),
-  condition: z.string().min(1, "Condition is required"),
-  category_id: z.coerce.number().min(1, "Category is required"),
-  listing_type: z.enum(["Sale", "Exchange", "Donation"]),
-  price: z.coerce.number().optional().nullable(),
-  cover_image: z.string().optional(),
-  user_id: z.string(),
-})
+// Define the form interface instead of using Zod
+interface BookFormValues {
+  title: string
+  author: string
+  isbn?: string
+  description?: string
+  condition: string
+  category_id: number
+  listing_type: "Sale" | "Exchange" | "Donation"
+  price?: number | null
+  cover_image?: string
+  user_id: string
+}
 
 export default function EditBookPage({ params }: { params: { id: string } }) {
   const { user, isLoading: authLoading } = useAuth()
@@ -44,9 +43,8 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
   const [bookNotFound, setBookNotFound] = useState(false)
   const supabase = createClientSupabaseClient()
 
-  // Initialize the form
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  // Initialize the form without zodResolver
+  const form = useForm<BookFormValues>({
     defaultValues: {
       title: "",
       author: "",
@@ -54,7 +52,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       description: "",
       condition: "",
       category_id: 0,
-      listing_type: "Exchange" as const,
+      listing_type: "Exchange",
       price: null,
       cover_image: "",
       user_id: "",
@@ -137,10 +135,28 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
     }
   }, [user, params.id, form, supabase])
 
-  // Handle form submission
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  // Handle form submission with manual validation
+  async function onSubmit(values: BookFormValues) {
     if (!user) {
       setError("You must be logged in to update a book")
+      return
+    }
+
+    // Basic validation
+    if (!values.title) {
+      setError("Title is required")
+      return
+    }
+    if (!values.author) {
+      setError("Author is required")
+      return
+    }
+    if (!values.condition) {
+      setError("Condition is required")
+      return
+    }
+    if (!values.category_id || values.category_id < 1) {
+      setError("Category is required")
       return
     }
 
@@ -209,14 +225,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
 
   // Show loading state
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <DashboardTitle title="Edit Book" description="Update your book listing" />
-        <div className="flex items-center justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </div>
-    )
+    return <EditBookLoadingState />
   }
 
   return (
@@ -427,11 +436,12 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {VALID_CONDITIONS.map((condition) => (
-                                <SelectItem key={condition} value={condition}>
-                                  {condition}
-                                </SelectItem>
-                              ))}
+                              {VALID_CONDITIONS &&
+                                VALID_CONDITIONS.map((condition) => (
+                                  <SelectItem key={condition} value={condition}>
+                                    {condition}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -499,6 +509,85 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
           </div>
         </form>
       </Form>
+    </div>
+  )
+}
+
+// Loading state component
+function EditBookLoadingState() {
+  return (
+    <div className="space-y-6">
+      <DashboardTitle title="Edit Book" description="Update your book listing" />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left column skeleton */}
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-40 w-full" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right column skeleton */}
+        <div className="space-y-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-20 w-full" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-between">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
