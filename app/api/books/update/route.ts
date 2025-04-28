@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache"
 // Define the valid conditions
 const VALID_CONDITIONS = ["New", "Like New", "Very Good", "Good", "Acceptable"]
 
+// Define the valid listing types that match the database constraint
+const VALID_LISTING_TYPES = ["sale", "swap", "donation"]
+
 export async function POST(request: NextRequest) {
   try {
     // Get the request body
@@ -38,8 +41,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert listing type to database format
-    let listingType = typeof data.listing_type === "string" ? data.listing_type.toLowerCase() : data.listing_type
-    if (listingType === "exchange") listingType = "swap"
+    let listingType = data.listing_type?.toLowerCase() || "sale"
+
+    // Map "exchange" to "swap" to match database constraint
+    if (listingType === "exchange") {
+      listingType = "swap"
+    }
+
+    // Validate that the listing type is one of the allowed values
+    if (!VALID_LISTING_TYPES.includes(listingType)) {
+      console.error(`Invalid listing type: ${listingType}. Must be one of: ${VALID_LISTING_TYPES.join(", ")}`)
+      return NextResponse.json(
+        { success: false, error: `Invalid listing type. Must be one of: ${VALID_LISTING_TYPES.join(", ")}` },
+        { status: 400 },
+      )
+    }
+
+    console.log("Using listing type:", listingType)
 
     // Prepare update data with proper null handling
     const updateData = {

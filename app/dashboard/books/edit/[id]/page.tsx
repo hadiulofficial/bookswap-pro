@@ -35,6 +35,13 @@ interface BookFormValues {
   user_id: string
 }
 
+// Map UI listing types to database listing types
+const listingTypeMap = {
+  Sale: "sale",
+  Exchange: "swap",
+  Donation: "donation",
+}
+
 export default function EditBookPage({ params }: { params: { id: string } }) {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
@@ -105,7 +112,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         const categoriesArray = Array.isArray(categoriesData) ? categoriesData : []
         setCategories(categoriesArray)
 
-        // Convert listing_type to match our enum if needed
+        // Convert listing_type to match our UI enum
         let listingType = bookData.listing_type
         if (listingType === "sale") listingType = "Sale"
         if (listingType === "swap") listingType = "Exchange"
@@ -182,6 +189,14 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       values.description = values.description || null
       values.cover_image = values.cover_image || null
 
+      // Create a copy of the values with the correct listing type format for the database
+      const dataForApi = {
+        ...values,
+        listing_type: listingTypeMap[values.listing_type] || "sale",
+      }
+
+      console.log("Sending data to API:", dataForApi)
+
       // Call the API route to update the book
       const response = await fetch("/api/books/update", {
         method: "POST",
@@ -190,7 +205,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         },
         body: JSON.stringify({
           bookId: params.id,
-          data: values,
+          data: dataForApi,
         }),
       })
 
