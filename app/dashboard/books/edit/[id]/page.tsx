@@ -33,6 +33,11 @@ interface BookFormValues {
   user_id: string
 }
 
+// Create a safe version of VALID_CONDITIONS
+const safeConditions = Array.isArray(VALID_CONDITIONS)
+  ? VALID_CONDITIONS
+  : ["New", "Like New", "Very Good", "Good", "Acceptable"]
+
 export default function EditBookPage({ params }: { params: { id: string } }) {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
@@ -436,12 +441,11 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {VALID_CONDITIONS &&
-                                VALID_CONDITIONS.map((condition) => (
-                                  <SelectItem key={condition} value={condition}>
-                                    {condition}
-                                  </SelectItem>
-                                ))}
+                              {safeConditions.map((condition) => (
+                                <SelectItem key={condition} value={condition}>
+                                  {condition}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
