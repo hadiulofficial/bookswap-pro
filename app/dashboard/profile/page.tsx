@@ -82,11 +82,15 @@ export default function ProfilePage() {
       if (avatarFile) {
         const fileExt = avatarFile.name.split(".").pop()
         const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`
-        const filePath = `avatars/${fileName}`
+        const filePath = `${fileName}`
 
+        // Now use the 'avatars' bucket that we just created
         const { error: uploadError, data } = await supabase.storage.from("avatars").upload(filePath, avatarFile)
 
-        if (uploadError) throw uploadError
+        if (uploadError) {
+          console.error("Upload error:", uploadError)
+          throw new Error(`Failed to upload image: ${uploadError.message}`)
+        }
 
         // Get public URL
         const {
