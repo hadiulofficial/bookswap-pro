@@ -141,11 +141,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6 px-4 sm:px-6">
+    <div className="space-y-6">
       <DashboardTitle title="Profile Settings" description="Manage your personal information and preferences" />
 
       <Tabs defaultValue="personal" className="w-full">
-        <TabsList className="mb-6 w-full overflow-x-auto flex-nowrap">
+        <TabsList className="mb-6">
           <TabsTrigger value="personal">Personal Information</TabsTrigger>
           <TabsTrigger value="account">Account Settings</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
@@ -159,8 +159,8 @@ export default function ProfilePage() {
                 <CardDescription>Your profile picture is visible to other users</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center">
-                <div className="relative mb-6 w-full flex flex-col items-center">
-                  <Avatar className="h-32 w-32 mb-4">
+                <div className="relative mb-4">
+                  <Avatar className="h-32 w-32">
                     <AvatarImage src={avatarPreview || profile.avatar_url || ""} alt={profile.full_name || ""} />
                     <AvatarFallback className="text-3xl">
                       {profile.full_name
@@ -169,42 +169,21 @@ export default function ProfilePage() {
                         .join("") || user.email?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-
-                  {/* Mobile-friendly upload button */}
-                  <div className="w-full flex justify-center">
-                    <label
-                      htmlFor="avatar-upload-mobile"
-                      className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-md cursor-pointer hover:bg-emerald-700 transition-colors w-full max-w-xs"
-                    >
-                      <Camera className="h-4 w-4" />
-                      <span>Change Profile Picture</span>
-                      <input
-                        id="avatar-upload-mobile"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleAvatarChange}
-                      />
-                    </label>
-                  </div>
-
-                  {/* Desktop upload button (still visible on hover) */}
                   <label
                     htmlFor="avatar-upload"
-                    className="absolute bottom-16 right-1/2 transform translate-x-16 bg-emerald-600 text-white p-2 rounded-full cursor-pointer hover:bg-emerald-700 transition-colors md:flex hidden"
+                    className="absolute bottom-0 right-0 bg-emerald-600 text-white p-2 rounded-full cursor-pointer hover:bg-emerald-700 transition-colors"
                   >
                     <Camera className="h-4 w-4" />
                     <span className="sr-only">Upload avatar</span>
-                    <input
-                      id="avatar-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatarChange}
-                    />
                   </label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
                 </div>
-
                 <div className="text-center">
                   <p className="font-medium text-lg">{profile.full_name || "User"}</p>
                   <p className="text-sm text-gray-500">{user.email}</p>
