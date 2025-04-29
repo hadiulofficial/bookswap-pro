@@ -84,8 +84,12 @@ export default function ProfilePage() {
         const fileName = `${user.id}-${Math.random().toString(36).substring(2)}.${fileExt}`
         const filePath = `${fileName}`
 
-        // Now use the 'avatars' bucket that we just created
-        const { error: uploadError, data } = await supabase.storage.from("avatars").upload(filePath, avatarFile)
+        // Try a different approach - use the upsert method with explicit metadata
+        const { error: uploadError, data } = await supabase.storage.from("avatars").upload(filePath, avatarFile, {
+          upsert: true,
+          contentType: avatarFile.type,
+          cacheControl: "3600",
+        })
 
         if (uploadError) {
           console.error("Upload error:", uploadError)
