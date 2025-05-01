@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export interface Database {
   public: {
@@ -90,32 +84,6 @@ export interface Database {
           owner_id?: string
           category_id?: number | null
           status?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      testimonials: {
-        Row: {
-          id: string
-          user_id: string
-          content: string
-          rating: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          content: string
-          rating: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          content?: string
-          rating?: number
           created_at?: string
           updated_at?: string
         }
@@ -227,42 +195,7 @@ export interface Database {
           created_at?: string
         }
       }
-      book_swaps: {
-        Row: {
-          id: string
-          requester_id: string
-          owner_id: string
-          requested_book_id: string
-          offered_book_id: string
-          message: string | null
-          status: "pending" | "approved" | "rejected"
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          requester_id: string
-          owner_id: string
-          requested_book_id: string
-          offered_book_id: string
-          message?: string | null
-          status?: "pending" | "approved" | "rejected"
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          requester_id?: string
-          owner_id?: string
-          requested_book_id?: string
-          offered_book_id?: string
-          message?: string | null
-          status?: "pending" | "approved" | "rejected"
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      orders: {
+       orders: {
         Row: {
           id: string
           user_id: string
@@ -337,10 +270,6 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      get_listing_type_values: {
-        Args: Record<PropertyKey, never>
-        Returns: string[]
-      }
       get_constraint_info: {
         Args: {
           table_name: string
@@ -352,12 +281,20 @@ export interface Database {
           check_clause: string
         }[]
       }
+      get_listing_type_values: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      book_condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
     }
     CompositeTypes: {
       [_ in never]: never
     }
   }
 }
+
+export type PublicSchema = Database['public']
+
+export { Database }
