@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { formatDistanceToNow } from "date-fns"
-import { Book, RefreshCw, Inbox, Check } from "lucide-react"
+import { Book, RefreshCw, Inbox, Check, ShoppingCart, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 
@@ -33,8 +33,31 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
         return <Book className="h-5 w-5 text-emerald-500" />
       case "request_update":
         return <RefreshCw className="h-5 w-5 text-blue-500" />
+      case "purchase_received":
+        return <DollarSign className="h-5 w-5 text-amber-500" />
+      case "purchase_confirmed":
+        return <ShoppingCart className="h-5 w-5 text-violet-500" />
+      case "purchase_shipped":
+        return <ShoppingCart className="h-5 w-5 text-indigo-500" />
       default:
         return <Inbox className="h-5 w-5 text-gray-500" />
+    }
+  }
+
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case "book_request":
+        return "bg-emerald-100"
+      case "request_update":
+        return "bg-blue-100"
+      case "purchase_received":
+        return "bg-amber-100"
+      case "purchase_confirmed":
+        return "bg-violet-100"
+      case "purchase_shipped":
+        return "bg-indigo-100"
+      default:
+        return "bg-gray-100"
     }
   }
 
@@ -48,6 +71,12 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
       router.push(`/dashboard/requests`)
     } else if (notification.type === "request_update" && notification.related_id) {
       router.push(`/dashboard/requests`)
+    } else if (notification.type === "purchase_received" && notification.related_id) {
+      router.push(`/dashboard/sales`)
+    } else if (notification.type === "purchase_confirmed" && notification.related_id) {
+      router.push(`/dashboard/purchases`)
+    } else if (notification.type === "purchase_shipped" && notification.related_id) {
+      router.push(`/dashboard/purchases`)
     }
   }
 
@@ -65,7 +94,9 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted/30 mr-4">
+      <div
+        className={`flex items-center justify-center w-10 h-10 rounded-full ${getNotificationColor(notification.type)} mr-4`}
+      >
         {getNotificationIcon(notification.type)}
       </div>
 

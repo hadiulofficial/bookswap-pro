@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { Bell, Check, BookOpen, RefreshCw, Book, Inbox, ChevronRight } from "lucide-react"
+import { Bell, Check, BookOpen, RefreshCw, Book, Inbox, ChevronRight, ShoppingCart, DollarSign } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Button } from "@/components/ui/button"
 import {
@@ -85,6 +85,12 @@ export function NotificationDropdown() {
       router.push(`/dashboard/requests`)
     } else if (notification.type === "request_update" && notification.related_id) {
       router.push(`/dashboard/requests`)
+    } else if (notification.type === "purchase_received" && notification.related_id) {
+      router.push(`/dashboard/sales`)
+    } else if (notification.type === "purchase_confirmed" && notification.related_id) {
+      router.push(`/dashboard/purchases`)
+    } else if (notification.type === "purchase_shipped" && notification.related_id) {
+      router.push(`/dashboard/purchases`)
     }
   }
 
@@ -105,6 +111,12 @@ export function NotificationDropdown() {
         return <Book className="h-4 w-4 text-emerald-500" />
       case "request_update":
         return <RefreshCw className="h-4 w-4 text-blue-500" />
+      case "purchase_received":
+        return <DollarSign className="h-4 w-4 text-amber-500" />
+      case "purchase_confirmed":
+        return <ShoppingCart className="h-4 w-4 text-violet-500" />
+      case "purchase_shipped":
+        return <ShoppingCart className="h-4 w-4 text-indigo-500" />
       default:
         return <Inbox className="h-4 w-4 text-gray-500" />
     }

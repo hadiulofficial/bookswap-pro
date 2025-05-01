@@ -18,7 +18,8 @@ export default function NotificationsPage() {
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="unread">Unread</TabsTrigger>
           <TabsTrigger value="requests">Book Requests</TabsTrigger>
-          <TabsTrigger value="updates">Updates</TabsTrigger>
+          <TabsTrigger value="purchases">Purchases</TabsTrigger>
+          <TabsTrigger value="sales">Sales</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all">
@@ -39,9 +40,15 @@ export default function NotificationsPage() {
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="updates">
+        <TabsContent value="purchases">
           <Suspense fallback={<NotificationsListSkeleton />}>
-            <NotificationsList filter="request_update" />
+            <NotificationsList filter="purchases" />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="sales">
+          <Suspense fallback={<NotificationsListSkeleton />}>
+            <NotificationsList filter="sales" />
           </Suspense>
         </TabsContent>
       </Tabs>

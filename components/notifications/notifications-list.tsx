@@ -23,7 +23,7 @@ type Notification = {
 }
 
 interface NotificationsListProps {
-  filter: "all" | "unread" | "book_request" | "request_update"
+  filter: "all" | "unread" | "book_request" | "request_update" | "purchases" | "sales"
 }
 
 export function NotificationsList({ filter }: NotificationsListProps) {
@@ -51,9 +51,11 @@ export function NotificationsList({ filter }: NotificationsListProps) {
       if (filter === "unread") {
         filteredData = data.filter((n) => !n.read)
       } else if (filter === "book_request") {
-        filteredData = data.filter((n) => n.type === "book_request")
-      } else if (filter === "request_update") {
-        filteredData = data.filter((n) => n.type === "request_update")
+        filteredData = data.filter((n) => n.type === "book_request" || n.type === "request_update")
+      } else if (filter === "purchases") {
+        filteredData = data.filter((n) => n.type === "purchase_confirmed" || n.type === "purchase_shipped")
+      } else if (filter === "sales") {
+        filteredData = data.filter((n) => n.type === "purchase_received")
       }
 
       setNotifications(filteredData)
