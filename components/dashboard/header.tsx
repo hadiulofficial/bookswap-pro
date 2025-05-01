@@ -10,8 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Bell, LogOut, Settings, User } from "lucide-react"
+import { LogOut, Settings, User } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { NotificationDropdown } from "@/components/notifications/notification-dropdown"
 
 export function DashboardHeader() {
   const { user, profile, signOut } = useAuth()
@@ -26,10 +27,7 @@ export function DashboardHeader() {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-4 border-b bg-white dark:bg-gray-800 dark:border-gray-700 px-4 md:px-6">
-      <Button variant="outline" size="icon" className="rounded-full">
-        <Bell className="h-5 w-5" />
-        <span className="sr-only">Notifications</span>
-      </Button>
+      <NotificationDropdown />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full">
