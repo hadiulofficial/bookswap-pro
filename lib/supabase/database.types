@@ -1,4 +1,10 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export interface Database {
   public: {
@@ -45,7 +51,7 @@ export interface Database {
           author: string
           description: string | null
           isbn: string | null
-          condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
+          condition: string
           cover_image: string | null
           listing_type: string
           price: number | null
@@ -61,7 +67,7 @@ export interface Database {
           author: string
           description?: string | null
           isbn?: string | null
-          condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
+          condition: string
           cover_image?: string | null
           listing_type: string
           price?: number | null
@@ -77,7 +83,7 @@ export interface Database {
           author?: string
           description?: string | null
           isbn?: string | null
-          condition?: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
+          condition?: string
           cover_image?: string | null
           listing_type?: string
           price?: number | null
@@ -138,7 +144,7 @@ export interface Database {
           book_id: string
           owner_id: string
           message: string | null
-          status: "pending" | "approved" | "rejected"
+          status: string
           created_at: string
           updated_at: string
         }
@@ -148,7 +154,7 @@ export interface Database {
           book_id: string
           owner_id: string
           message?: string | null
-          status?: "pending" | "approved" | "rejected"
+          status?: string
           created_at?: string
           updated_at?: string
         }
@@ -158,7 +164,7 @@ export interface Database {
           book_id?: string
           owner_id?: string
           message?: string | null
-          status?: "pending" | "approved" | "rejected"
+          status?: string
           created_at?: string
           updated_at?: string
         }
@@ -195,106 +201,18 @@ export interface Database {
           created_at?: string
         }
       }
-       orders: {
-        Row: {
-          id: string
-          user_id: string
-          book_id: string
-          seller_id: string
-          amount: number
-          status: string
-          created_at: string
-          updated_at: string
-          stripe_session_id: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          book_id: string
-          seller_id: string
-          amount: number
-          status: string
-          created_at?: string
-          updated_at?: string
-          stripe_session_id?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          book_id?: string
-          seller_id?: string
-          amount?: number
-          status?: string
-          created_at?: string
-          updated_at?: string
-          stripe_session_id?: string | null
-        }
-      }
-      shipping_details: {
-        Row: {
-          order_id: string
-          full_name: string
-          address_line1: string
-          address_line2: string | null
-          city: string
-          state: string
-          postal_code: string
-          country: string
-          phone: string | null
-        }
-        Insert: {
-          order_id: string
-          full_name: string
-          address_line1: string
-          address_line2?: string | null
-          city: string
-          state: string
-          postal_code: string
-          country: string
-          phone?: string | null
-        }
-        Update: {
-          order_id?: string
-          full_name?: string
-          address_line1?: string
-          address_line2?: string | null
-          city?: string
-          state?: string
-          postal_code?: string
-          country?: string
-          phone?: string | null
-        }
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      get_constraint_info: {
-        Args: {
-          table_name: string
-          column_name: string
-        }
-        Returns: {
-          constraint_name: string
-          constraint_type: string
-          check_clause: string
-        }[]
-      }
-      get_listing_type_values: {
-        Args: Record<PropertyKey, never>
-        Returns: string[]
-      }
+      [_ in never]: never
     }
     Enums: {
-      book_condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
     }
   }
 }
-
-export type PublicSchema = Database['public']
-
-export { Database }
