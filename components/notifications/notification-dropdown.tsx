@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { Bell, Check, BookOpen, RefreshCw, Book, Inbox } from "lucide-react"
+import { Bell, Check, BookOpen, RefreshCw, Book, Inbox, ChevronRight } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Button } from "@/components/ui/button"
 import {
@@ -37,6 +37,9 @@ export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
+
+  // Maximum number of notifications to show in dropdown
+  const MAX_NOTIFICATIONS = 5
 
   useEffect(() => {
     if (user?.id) {
@@ -107,7 +110,15 @@ export function NotificationDropdown() {
     }
   }
 
+  const handleViewAllClick = () => {
+    router.push("/dashboard/notifications")
+  }
+
   if (!user) return null
+
+  // Limit the number of notifications shown in the dropdown
+  const displayedNotifications = notifications.slice(0, MAX_NOTIFICATIONS)
+  const hasMoreNotifications = notifications.length > MAX_NOTIFICATIONS
 
   return (
     <DropdownMenu>
@@ -138,7 +149,7 @@ export function NotificationDropdown() {
           <div className="p-4 text-center text-sm text-gray-500">Loading notifications...</div>
         ) : notifications.length > 0 ? (
           <>
-            {notifications.map((notification) => (
+            {displayedNotifications.map((notification) => (
               <DropdownMenuItem
                 key={notification.id}
                 className={`flex flex-col items-start p-3 cursor-pointer ${!notification.read ? "bg-muted/50" : ""}`}
@@ -159,10 +170,12 @@ export function NotificationDropdown() {
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="justify-center text-sm text-gray-500"
-              onClick={() => router.push("/dashboard/notifications")}
+              className="flex justify-center items-center text-sm font-medium text-emerald-600 hover:text-emerald-700 py-3"
+              onClick={handleViewAllClick}
             >
               View all notifications
+              {hasMoreNotifications && <span className="ml-1 text-xs text-gray-500">({notifications.length})</span>}
+              <ChevronRight className="ml-1 h-4 w-4" />
             </DropdownMenuItem>
           </>
         ) : (

@@ -3,18 +3,31 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
-export async function getNotifications(userId: string) {
+export async function getNotifications(userId: string, filter?: string, limit?: number) {
   try {
     if (!userId) return { data: null, error: "User ID is required" }
 
     const supabase = createServerSupabaseClient()
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("notifications")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(20)
+
+    // Apply filter if provided
+    if (filter === "unread") {
+      query = query.eq("read", false)
+    } else if (filter) {
+      query = query.eq("type", filter)
+    }
+
+    // Apply limit if provided
+    if (limit) {
+      query = query.limit(limit)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error("Error fetching notifications:", error)
@@ -83,6 +96,7 @@ export async function markNotificationAsRead(notificationId: string, userId: str
     }
 
     revalidatePath("/dashboard")
+    revalidatePath("/dashboard/notifications")
     return { success: true, error: null }
   } catch (error: any) {
     console.error("Exception updating notification:", error)
@@ -108,6 +122,7 @@ export async function markAllNotificationsAsRead(userId: string) {
     }
 
     revalidatePath("/dashboard")
+    revalidatePath("/dashboard/notifications")
     return { success: true, error: null }
   } catch (error: any) {
     console.error("Exception updating notifications:", error)
