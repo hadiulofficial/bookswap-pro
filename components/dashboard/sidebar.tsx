@@ -20,6 +20,7 @@ import {
   Gift,
   ShoppingBag,
   DollarSign,
+  Star,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -99,6 +100,11 @@ export function DashboardSidebar() {
       href: "/dashboard/wishlist",
       title: "Wishlist",
       icon: <Heart className="h-5 w-5" />,
+    },
+    {
+      href: "/dashboard/testimonial",
+      title: "Your Review",
+      icon: <Star className="h-5 w-5" />,
     },
     {
       href: "/dashboard/profile",
