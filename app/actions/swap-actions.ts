@@ -20,7 +20,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     // Get the book owner's ID
     const { data: book, error: bookError } = await supabase
       .from("books")
-      .select("owner_id, listing_type, status, title")
+      .select("owner_id, listing_type")
       .eq("id", bookId)
       .single()
 
@@ -29,14 +29,6 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       return {
         success: false,
         error: "Book not found",
-      }
-    }
-
-    // Check if book is available
-    if (book.status !== "available") {
-      return {
-        success: false,
-        error: "This book is no longer available for exchange",
       }
     }
 
@@ -52,7 +44,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     // Verify the offered book belongs to the user and is listed for exchange
     const { data: offeredBook, error: offeredBookError } = await supabase
       .from("books")
-      .select("owner_id, listing_type, status, title")
+      .select("owner_id, listing_type, status")
       .eq("id", offeredBookId)
       .eq("owner_id", userId)
       .single()
@@ -69,7 +61,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     if (offeredBook.status !== "available") {
       return {
         success: false,
-        error: `The book "${offeredBook.title}" is not available for exchange`,
+        error: "The book you're offering is not available for exchange",
       }
     }
 
@@ -78,7 +70,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     if (offeredBookListingType !== "exchange" && offeredBookListingType !== "swap") {
       return {
         success: false,
-        error: `The book "${offeredBook.title}" is not available for exchange`,
+        error: "The book you're offering is not available for exchange",
       }
     }
 
@@ -94,7 +86,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     if (existingRequest) {
       return {
         success: false,
-        error: `You have already requested to swap "${offeredBook.title}" with "${book.title}"`,
+        error: "You have already requested to swap this book",
       }
     }
 
@@ -125,7 +117,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       id: uuidv4(),
       user_id: book.owner_id,
       title: "New Swap Request",
-      message: `Someone wants to swap their book "${offeredBook.title}" with your book "${book.title}"`,
+      message: `Someone wants to swap one of their books with your book`,
       type: "swap_request",
       related_id: swapId,
       read: false,
@@ -198,18 +190,6 @@ export async function updateSwapStatus(swapId: string, status: "approved" | "rej
       }
     }
 
-    // Get book titles for better notifications
-    const { data: requestedBook } = await supabase
-      .from("books")
-      .select("title")
-      .eq("id", swap.requested_book_id)
-      .single()
-
-    const { data: offeredBook } = await supabase.from("books").select("title").eq("id", swap.offered_book_id).single()
-
-    const requestedBookTitle = requestedBook?.title || "your book"
-    const offeredBookTitle = offeredBook?.title || "their book"
-
     // If approved, update both books' status to "swapped"
     if (status === "approved") {
       // Update requested book status
@@ -238,8 +218,8 @@ export async function updateSwapStatus(swapId: string, status: "approved" | "rej
       title: status === "approved" ? "Swap Request Approved" : "Swap Request Rejected",
       message:
         status === "approved"
-          ? `Your request to swap "${offeredBookTitle}" with "${requestedBookTitle}" has been approved! Contact the owner to arrange the exchange.`
-          : `Your request to swap "${offeredBookTitle}" with "${requestedBookTitle}" has been rejected.`,
+          ? "Your swap request has been approved! Contact the owner to arrange the exchange."
+          : "Your swap request has been rejected.",
       type: "swap_" + status,
       related_id: swapId,
       read: false,
@@ -262,46 +242,6 @@ export async function updateSwapStatus(swapId: string, status: "approved" | "rej
   }
 }
 
-export async function checkUserHasSwappableBooks(userId: string) {
-  try {
-    if (!userId) {
-      return {
-        hasBooks: false,
-        count: 0,
-      }
-    }
-
-    const supabase = createServerSupabaseClient()
-
-    // Count books available for exchange
-    const { count, error } = await supabase
-      .from("books")
-      .select("id", { count: "exact" })
-      .eq("owner_id", userId)
-      .eq("status", "available")
-      .or("listing_type.ilike.%exchange%,listing_type.ilike.%swap%")
-
-    if (error) {
-      console.error("Error checking swappable books:", error)
-      return {
-        hasBooks: false,
-        count: 0,
-      }
-    }
-
-    return {
-      hasBooks: count > 0,
-      count: count || 0,
-    }
-  } catch (error) {
-    console.error("Exception checking swappable books:", error)
-    return {
-      hasBooks: false,
-      count: 0,
-    }
-  }
-}
-
 export async function getUserSwappableBooks(userId: string) {
   try {
     if (!userId) {
@@ -309,6 +249,14 @@ export async function getUserSwappableBooks(userId: string) {
     }
 
     const supabase = createServerSupabaseClient()
+
+    // Debug: Log all books for this user to see what's available
+    const { data: allBooks, error: allBooksError } = await supabase
+      .from("books")
+      .select("id, title, author, listing_type, status")
+      .eq("owner_id", userId)
+
+    console.log("All user books:", allBooks)
 
     // Use a more flexible approach to find swappable books
     const { data, error } = await supabase

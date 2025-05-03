@@ -24,15 +24,12 @@ import {
   ShoppingCart,
   Gift,
   Check,
-  AlertCircle,
-  PlusCircle,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { format } from "date-fns"
 import { addToWishlist, removeFromWishlist } from "@/app/actions/wishlist-actions"
 import { requestDonatedBook } from "@/app/actions/book-request-actions"
-import { checkUserHasSwappableBooks } from "@/app/actions/swap-actions"
 
 export default function BookDetailsPage() {
   const router = useRouter()
@@ -51,8 +48,6 @@ export default function BookDetailsPage() {
   const [hasRequested, setHasRequested] = useState(false)
   const [isDonated, setIsDonated] = useState(false)
   const [approvedDonationRequests, setApprovedDonationRequests] = useState<string[]>([])
-  const [hasSwappableBooks, setHasSwappableBooks] = useState(false)
-  const [checkingSwappableBooks, setCheckingSwappableBooks] = useState(false)
 
   useEffect(() => {
     fetchBookDetails()
@@ -60,24 +55,8 @@ export default function BookDetailsPage() {
       checkWishlistStatus()
       checkRequestStatus()
       fetchApprovedDonationRequests()
-      checkSwappableBooks()
     }
   }, [bookId, user])
-
-  const checkSwappableBooks = async () => {
-    if (!user) return
-
-    try {
-      setCheckingSwappableBooks(true)
-      const result = await checkUserHasSwappableBooks(user.id)
-      setHasSwappableBooks(result.hasBooks)
-    } catch (err) {
-      console.error("Error checking swappable books:", err)
-      setHasSwappableBooks(false)
-    } finally {
-      setCheckingSwappableBooks(false)
-    }
-  }
 
   const fetchBookDetails = async () => {
     try {
@@ -487,40 +466,13 @@ export default function BookDetailsPage() {
                         {book.owner_id !== user.id ? (
                           <>
                             {book.listing_type === "Exchange" && (
-                              <>
-                                {book.status === "available" ? (
-                                  <>
-                                    {hasSwappableBooks ? (
-                                      <Button
-                                        size="lg"
-                                        className="flex-1 md:flex-none"
-                                        onClick={() => router.push(`/books/${bookId}/swap`)}
-                                      >
-                                        <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        size="lg"
-                                        variant="outline"
-                                        className="flex-1 md:flex-none"
-                                        onClick={() => router.push("/dashboard/books/add")}
-                                      >
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Book to Swap
-                                      </Button>
-                                    )}
-                                  </>
-                                ) : (
-                                  <Button
-                                    size="lg"
-                                    variant="outline"
-                                    className="flex-1 md:flex-none bg-gray-50"
-                                    disabled
-                                  >
-                                    <AlertCircle className="mr-2 h-4 w-4 text-amber-500" />
-                                    No Longer Available
-                                  </Button>
-                                )}
-                              </>
+                              <Button
+                                size="lg"
+                                className="flex-1 md:flex-none"
+                                onClick={() => router.push(`/books/${bookId}/swap`)}
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
+                              </Button>
                             )}
 
                             {book.listing_type === "Sell" && (
