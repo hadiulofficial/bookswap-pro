@@ -24,6 +24,7 @@ import {
   ShoppingCart,
   Gift,
   Check,
+  AlertCircle,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
@@ -466,13 +467,27 @@ export default function BookDetailsPage() {
                         {book.owner_id !== user.id ? (
                           <>
                             {book.listing_type === "Exchange" && (
-                              <Button
-                                size="lg"
-                                className="flex-1 md:flex-none"
-                                onClick={() => router.push(`/books/${bookId}/swap`)}
-                              >
-                                <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
-                              </Button>
+                              <>
+                                {book.status === "available" ? (
+                                  <Button
+                                    size="lg"
+                                    className="flex-1 md:flex-none"
+                                    onClick={() => router.push(`/books/${bookId}/swap`)}
+                                  >
+                                    <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="flex-1 md:flex-none bg-gray-50"
+                                    disabled
+                                  >
+                                    <AlertCircle className="mr-2 h-4 w-4 text-amber-500" />
+                                    No Longer Available
+                                  </Button>
+                                )}
+                              </>
                             )}
 
                             {book.listing_type === "Sell" && (

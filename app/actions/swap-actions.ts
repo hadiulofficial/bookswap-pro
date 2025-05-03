@@ -8,15 +8,6 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
   try {
     console.log("Requesting book swap:", { userId, bookId, offeredBookId, message })
 
-    // Handle dummy data case (IDs starting with "dummy-")
-    if (offeredBookId.startsWith("dummy-")) {
-      console.log("Demo mode: Using dummy book for swap")
-      return {
-        success: true,
-        demo: true,
-      }
-    }
-
     if (!userId || !bookId || !offeredBookId) {
       return {
         success: false,

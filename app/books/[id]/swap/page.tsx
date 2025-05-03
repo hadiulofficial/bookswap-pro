@@ -19,37 +19,6 @@ import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { requestBookSwap } from "@/app/actions/swap-actions"
 
-// Dummy books data as fallback
-const DUMMY_BOOKS = [
-  {
-    id: "dummy-1",
-    title: "The Great Gatsby",
-    author: "F. Scott Fitzgerald",
-    condition: "Very Good",
-    cover_image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=200",
-    listing_type: "Exchange",
-    status: "available",
-  },
-  {
-    id: "dummy-2",
-    title: "To Kill a Mockingbird",
-    author: "Harper Lee",
-    condition: "Good",
-    cover_image: "https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=200",
-    listing_type: "Exchange",
-    status: "available",
-  },
-  {
-    id: "dummy-3",
-    title: "1984",
-    author: "George Orwell",
-    condition: "Like New",
-    cover_image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=200",
-    listing_type: "Exchange",
-    status: "available",
-  },
-]
-
 export default function SwapRequestPage() {
   const router = useRouter()
   const params = useParams()
@@ -64,7 +33,6 @@ export default function SwapRequestPage() {
   const [message, setMessage] = useState("")
   const [myBooks, setMyBooks] = useState<any[]>([])
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null)
-  const [useDummyData, setUseDummyData] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -149,22 +117,18 @@ export default function SwapRequestPage() {
         throw error
       }
 
-      // If no real books are found, use dummy data
+      // If no books are found, set error message
       if (!data || data.length === 0) {
-        console.log("No real books found, using dummy data")
-        setMyBooks(DUMMY_BOOKS)
-        setUseDummyData(true)
+        console.log("No books found for exchange")
+        setMyBooks([])
         setError("You don't have any books available for exchange. Please add a book first.")
       } else {
         setMyBooks(data)
-        setUseDummyData(false)
         setError(null)
       }
     } catch (err: any) {
       console.error("Error fetching my books:", err)
-      // Use dummy data as fallback on error
-      setMyBooks(DUMMY_BOOKS)
-      setUseDummyData(true)
+      setMyBooks([])
       setError("Failed to load your books. Please try again later.")
     }
   }
@@ -193,20 +157,6 @@ export default function SwapRequestPage() {
     setSubmitting(true)
 
     try {
-      // If using dummy data, show a success message without making a real request
-      if (useDummyData) {
-        // Simulate a delay
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        toast({
-          title: "Swap Request Sent (Demo)",
-          description: "This is a demo. In a real scenario, your swap request would be sent to the book owner.",
-        })
-        router.push("/dashboard/swaps")
-        return
-      }
-
-      // Otherwise, make a real request
       const result = await requestBookSwap(user.id, bookId, selectedBookId, message)
 
       if (result.success) {
@@ -266,37 +216,16 @@ export default function SwapRequestPage() {
                 <RefreshCw className="mr-2 h-5 w-5 text-emerald-600" /> Request Book Swap
               </h1>
 
-              {useDummyData && (
-                <div className="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-md mb-6">
-                  <p className="font-medium">Demo Mode Active</p>
-                  <p className="text-sm mt-1">
-                    You're seeing example books since we couldn't find your books available for exchange. This is a
-                    demonstration of how the swap feature works.
-                  </p>
-                </div>
-              )}
-
               {error ? (
                 <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6 flex items-start">
                   <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium">Unable to proceed with swap</p>
                     <p className="text-sm mt-1">{error}</p>
-                    <div className="mt-4 flex flex-wrap gap-3">
+                    <div className="mt-4">
                       <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/books/add")}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add a Book for Exchange
                       </Button>
-                      {useDummyData && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => {
-                            setError(null)
-                          }}
-                        >
-                          Continue with Demo
-                        </Button>
-                      )}
                     </div>
                   </div>
                 </div>
