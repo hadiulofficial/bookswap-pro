@@ -250,13 +250,21 @@ export async function getUserSwappableBooks(userId: string) {
 
     const supabase = createServerSupabaseClient()
 
-    // Use OR syntax for listing_type and make sure to use lowercase comparison
+    // Debug: Log all books for this user to see what's available
+    const { data: allBooks, error: allBooksError } = await supabase
+      .from("books")
+      .select("id, title, author, listing_type, status")
+      .eq("owner_id", userId)
+
+    console.log("All user books:", allBooks)
+
+    // Use a more flexible approach to find swappable books
     const { data, error } = await supabase
       .from("books")
       .select("*")
       .eq("owner_id", userId)
       .eq("status", "available")
-      .or(`listing_type.ilike.%exchange%,listing_type.ilike.%swap%`)
+      .or("listing_type.ilike.%exchange%,listing_type.ilike.%swap%")
       .order("created_at", { ascending: false })
 
     console.log("Swappable books query result:", data)

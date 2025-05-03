@@ -60,8 +60,9 @@ export default function SwapRequestPage() {
         throw new Error("Book not found")
       }
 
-      // Check if book is available for exchange
-      if (bookData.listing_type.toLowerCase() !== "exchange" && bookData.listing_type.toLowerCase() !== "swap") {
+      // Check if book is available for exchange - use case insensitive comparison
+      const listingType = bookData.listing_type.toLowerCase()
+      if (listingType !== "exchange" && listingType !== "swap") {
         throw new Error("This book is not available for exchange")
       }
 
@@ -110,13 +111,13 @@ export default function SwapRequestPage() {
         console.error("Error fetching all books:", allBooksError)
       }
 
-      // Now fetch only the exchange books
+      // Now fetch only the exchange books with a more flexible approach
       const { data, error } = await supabase
         .from("books")
         .select("*")
         .eq("owner_id", user.id)
         .eq("status", "available")
-        .or(`listing_type.eq.exchange,listing_type.eq.swap`)
+        .or("listing_type.ilike.%exchange%,listing_type.ilike.%swap%")
         .order("created_at", { ascending: false })
 
       console.log("Exchange books query result:", data)
