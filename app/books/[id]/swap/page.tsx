@@ -14,7 +14,7 @@ import { Footer } from "@/components/footer"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Loader2, BookOpen, ArrowLeft, RefreshCw, Check, AlertCircle } from "lucide-react"
+import { Loader2, BookOpen, ArrowLeft, RefreshCw, Check, AlertCircle, PlusCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { requestBookSwap } from "@/app/actions/swap-actions"
@@ -68,7 +68,7 @@ export default function SwapRequestPage() {
 
   useEffect(() => {
     if (!user) {
-      router.push("/login")
+      router.push("/login?redirect=" + encodeURIComponent(`/books/${bookId}/swap`))
       return
     }
 
@@ -90,6 +90,11 @@ export default function SwapRequestPage() {
 
       if (!bookData) {
         throw new Error("Book not found")
+      }
+
+      // Check if book is available
+      if (bookData.status !== "available") {
+        throw new Error("This book is no longer available for exchange")
       }
 
       // Check if book is available for exchange - use case insensitive comparison
@@ -129,21 +134,7 @@ export default function SwapRequestPage() {
     if (!user) return
 
     try {
-      console.log("Fetching books for user:", user.id)
-
-      // First, let's log all the user's books to debug
-      const { data: allBooks, error: allBooksError } = await supabase
-        .from("books")
-        .select("id, title, author, listing_type, status")
-        .eq("owner_id", user.id)
-
-      console.log("All user books:", allBooks)
-
-      if (allBooksError) {
-        console.error("Error fetching all books:", allBooksError)
-      }
-
-      // Now fetch only the exchange books with a more flexible approach
+      // Use a more flexible approach to find swappable books
       const { data, error } = await supabase
         .from("books")
         .select("*")
@@ -163,20 +154,18 @@ export default function SwapRequestPage() {
         console.log("No real books found, using dummy data")
         setMyBooks(DUMMY_BOOKS)
         setUseDummyData(true)
+        setError("You don't have any books available for exchange. Please add a book first.")
       } else {
         setMyBooks(data)
         setUseDummyData(false)
+        setError(null)
       }
     } catch (err: any) {
       console.error("Error fetching my books:", err)
       // Use dummy data as fallback on error
       setMyBooks(DUMMY_BOOKS)
       setUseDummyData(true)
-      toast({
-        title: "Using demo mode",
-        description: "We're showing example books since we couldn't load your books",
-        variant: "default",
-      })
+      setError("Failed to load your books. Please try again later.")
     }
   }
 
@@ -252,7 +241,9 @@ export default function SwapRequestPage() {
         <main className="flex-1 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
           <div className="text-center p-8">
             <h1 className="text-2xl font-bold mb-4">You must be logged in to request a swap</h1>
-            <Button onClick={() => router.push("/login")}>Log In</Button>
+            <Button onClick={() => router.push(`/login?redirect=${encodeURIComponent(`/books/${bookId}/swap`)}`)}>
+              Log In
+            </Button>
           </div>
         </main>
         <Footer />
@@ -285,20 +276,28 @@ export default function SwapRequestPage() {
                 </div>
               )}
 
-              {error && !useDummyData ? (
+              {error ? (
                 <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6 flex items-start">
                   <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium">Unable to proceed with swap</p>
                     <p className="text-sm mt-1">{error}</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => router.push("/dashboard/books/add")}
-                    >
-                      Add a Book
-                    </Button>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/books/add")}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add a Book for Exchange
+                      </Button>
+                      {useDummyData && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            setError(null)
+                          }}
+                        >
+                          Continue with Demo
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : loading ? (
