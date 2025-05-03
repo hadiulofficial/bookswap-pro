@@ -1,4 +1,10 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export interface Database {
   public: {
@@ -256,6 +262,88 @@ export interface Database {
           updated_at?: string
         }
       }
+      orders: {
+        Row: {
+          id: string
+          user_id: string
+          book_id: string
+          seller_id: string
+          amount: number
+          status: string
+          created_at: string
+          updated_at: string
+          stripe_session_id: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          book_id: string
+          seller_id: string
+          amount: number
+          status: string
+          created_at?: string
+          updated_at?: string
+          stripe_session_id?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          book_id?: string
+          seller_id?: string
+          amount?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+          stripe_session_id?: string | null
+        }
+      }
+      shipping_details: {
+        Row: {
+          order_id: string
+          full_name: string
+          address_line1: string
+          address_line2: string | null
+          city: string
+          state: string
+          postal_code: string
+          country: string
+          phone: string | null
+        }
+        Insert: {
+          order_id: string
+          full_name: string
+          address_line1: string
+          address_line2?: string | null
+          city: string
+          state: string
+          postal_code: string
+          country: string
+          phone?: string | null
+        }
+        Update: {
+          order_id?: string
+          full_name?: string
+          address_line1?: string
+          address_line2?: string | null
+          city?: string
+          state?: string
+          postal_code?: string
+          country?: string
+          phone?: string | null
+        }
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
