@@ -47,7 +47,7 @@ export default function SwapRequestPage() {
   const fetchBookDetails = async () => {
     try {
       setLoading(true)
-      setError(null)
+      setError(null) // Explicitly clear previous errors before fetching
 
       // Fetch the book first
       const { data: bookData, error: bookError } = await supabase.from("books").select("*").eq("id", bookId).single()
@@ -94,49 +94,59 @@ export default function SwapRequestPage() {
   }
 
   const fetchMyBooks = async () => {
-    if (!user) return
+    if (!user) {
+      console.warn("fetchMyBooks called without a user.")
+      return
+    }
 
     try {
-      console.log("Fetching books for user:", user.id)
+      console.log(`fetchMyBooks: Fetching books for user ID: ${user.id}`)
 
-      // First, let's log all the user's books to debug
-      const { data: allBooks, error: allBooksError } = await supabase
+      // Select specific columns for efficiency and clarity
+      const { data: userBooks, error: queryError } = await supabase
         .from("books")
-        .select("id, title, author, listing_type, status")
+        .select("id, title, author, cover_image, condition, listing_type, status")
         .eq("owner_id", user.id)
+        .eq("status", "available") // Books must be explicitly 'available'
+        .or("listing_type.ilike.%exchange%,listing_type.ilike.%swap%") // Case-insensitive match for exchange or swap
 
-      console.log("All user books:", allBooks)
+      // Log the direct output from Supabase
+      console.log("fetchMyBooks: Supabase query result:", { userBooks, queryError })
 
-      if (allBooksError) {
-        console.error("Error fetching all books:", allBooksError)
+      if (queryError) {
+        console.error("fetchMyBooks: Error querying user's books:", queryError)
+        // Display a more specific error if the query itself fails
+        setError(`Failed to load your exchangeable books: ${queryError.message}`)
+        setMyBooks([]) // Ensure book list is empty on query error
+        return
       }
 
-      // Now fetch only the exchange books with a more flexible approach
-      const { data, error } = await supabase
-        .from("books")
-        .select("*")
-        .eq("owner_id", user.id)
-        .eq("status", "available")
-        .or("listing_type.ilike.%exchange%,listing_type.ilike.%swap%")
-        .order("created_at", { ascending: false })
-
-      console.log("Exchange books query result:", data)
-
-      if (error) {
-        throw error
-      }
-
-      setMyBooks(data || [])
-
-      // If user has no books for exchange, show error
-      if (!data || data.length === 0) {
-        setError("You don't have any books available for exchange. Please add a book first.")
+      if (userBooks && userBooks.length > 0) {
+        console.log(`fetchMyBooks: Found ${userBooks.length} exchangeable books.`)
+        setMyBooks(userBooks)
+        // If an error ISN'T already set by fetchBookDetails (which would be a more specific error about the TARGET book),
+        // then we can safely set error to null because we found user's books.
+        // Or if the current error IS the "no books" message, clear it.
+        if (error === null || error === "You don't have any books available for exchange. Please add a book first.") {
+          setError(null)
+        }
+      } else {
+        console.log("fetchMyBooks: No exchangeable books found for the user.")
+        setMyBooks([])
+        // If no error is currently set from fetchBookDetails (meaning fetchBookDetails was successful and target book is swappable),
+        // then set the "no books" error because the user genuinely doesn't have swappable books.
+        if (error === null) {
+          setError("You don't have any books available for exchange. Please add a book first.")
+        }
       }
     } catch (err: any) {
-      console.error("Error fetching my books:", err)
+      // Catch any other unexpected errors during the process
+      console.error("fetchMyBooks: Unexpected exception:", err)
+      setError("An unexpected error occurred while loading your books.")
+      setMyBooks([])
       toast({
-        title: "Error",
-        description: "Failed to load your books",
+        title: "Error Loading Books",
+        description: "An unexpected issue occurred while trying to load your books for exchange.",
         variant: "destructive",
       })
     }
