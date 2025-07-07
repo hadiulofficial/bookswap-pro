@@ -102,45 +102,64 @@ export default function SwapRequestPage() {
     try {
       console.log(`fetchMyBooks: Fetching books for user ID: ${user.id}`)
 
-      // Select specific columns for efficiency and clarity
-      const { data: userBooks, error: queryError } = await supabase
+      // First, get ALL books for the user to see what we're working with
+      const { data: allUserBooks, error: queryError } = await supabase
         .from("books")
-        .select("id, title, author, cover_image, condition, listing_type, status")
+        .select("id, title, author, cover_image, condition, listing_type, status, owner_id")
         .eq("owner_id", user.id)
-        .eq("status", "available") // Books must be explicitly 'available'
-        .or("listing_type.ilike.%exchange%,listing_type.ilike.%swap%") // Case-insensitive match for exchange or swap
 
-      // Log the direct output from Supabase
-      console.log("fetchMyBooks: Supabase query result:", { userBooks, queryError })
+      console.log("fetchMyBooks: ALL user books from database:", allUserBooks)
 
       if (queryError) {
         console.error("fetchMyBooks: Error querying user's books:", queryError)
-        // Display a more specific error if the query itself fails
-        setError(`Failed to load your exchangeable books: ${queryError.message}`)
-        setMyBooks([]) // Ensure book list is empty on query error
+        setError(`Failed to load your books: ${queryError.message}`)
+        setMyBooks([])
         return
       }
 
-      if (userBooks && userBooks.length > 0) {
-        console.log(`fetchMyBooks: Found ${userBooks.length} exchangeable books.`)
-        setMyBooks(userBooks)
-        // If an error ISN'T already set by fetchBookDetails (which would be a more specific error about the TARGET book),
-        // then we can safely set error to null because we found user's books.
-        // Or if the current error IS the "no books" message, clear it.
-        if (error === null || error === "You don't have any books available for exchange. Please add a book first.") {
+      if (!allUserBooks || allUserBooks.length === 0) {
+        console.log("fetchMyBooks: User has no books at all.")
+        setMyBooks([])
+        setError("You don't have any books listed yet. Please add a book first.")
+        return
+      }
+
+      // Now filter for exchangeable books in JavaScript (more reliable than Supabase filtering)
+      const exchangeableBooks = allUserBooks.filter((book) => {
+        const isAvailable = book.status?.toLowerCase() === "available"
+        const isExchangeable =
+          book.listing_type?.toLowerCase().includes("exchange") || book.listing_type?.toLowerCase().includes("swap")
+
+        console.log(
+          `Book "${book.title}": status="${book.status}", listing_type="${book.listing_type}", isAvailable=${isAvailable}, isExchangeable=${isExchangeable}`,
+        )
+
+        return isAvailable && isExchangeable
+      })
+
+      console.log(
+        `fetchMyBooks: Found ${exchangeableBooks.length} exchangeable books out of ${allUserBooks.length} total books`,
+      )
+
+      if (exchangeableBooks.length > 0) {
+        setMyBooks(exchangeableBooks)
+        // Clear any previous error about not having books
+        if (
+          error === "You don't have any books available for exchange. Please add a book first." ||
+          error === "You don't have any books listed yet. Please add a book first."
+        ) {
           setError(null)
         }
       } else {
-        console.log("fetchMyBooks: No exchangeable books found for the user.")
         setMyBooks([])
-        // If no error is currently set from fetchBookDetails (meaning fetchBookDetails was successful and target book is swappable),
-        // then set the "no books" error because the user genuinely doesn't have swappable books.
-        if (error === null) {
-          setError("You don't have any books available for exchange. Please add a book first.")
+        // Only set this error if there's no other error from fetchBookDetails
+        if (!error || error === "You don't have any books listed yet. Please add a book first.") {
+          setError(
+            "You don't have any books available for exchange. Please add a book with listing type 'Exchange' or 'Swap' and status 'Available'.",
+          )
         }
       }
     } catch (err: any) {
-      // Catch any other unexpected errors during the process
       console.error("fetchMyBooks: Unexpected exception:", err)
       setError("An unexpected error occurred while loading your books.")
       setMyBooks([])

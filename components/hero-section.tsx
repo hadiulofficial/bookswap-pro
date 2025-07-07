@@ -25,17 +25,17 @@ export function HeroSection() {
               <Button size="lg" className="px-8 bg-black hover:bg-gray-800 text-white rounded-full">
                 <Link href="/books">View Books</Link>
               </Button>
-              <Button size="lg" variant="outline" className="px-8 rounded-full">
+              <Button size="lg" variant="outline" className="px-8 rounded-full bg-transparent">
                 <Link href="#features">Learn More</Link>
               </Button>
             </div>
           </div>
           <div className="relative mx-auto lg:mx-0">
             <Image
-              src="/placeholder.svg?width=600&height=750"
+              src="/colorful-bookshelf.png"
               width={600}
               height={750}
-              alt="BookSwap App Showcase"
+              alt="Colorful bookshelf with various books"
               className="rounded-lg shadow-2xl"
             />
           </div>
