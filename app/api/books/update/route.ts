@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache"
 // Define the valid conditions
 const VALID_CONDITIONS = ["New", "Like New", "Very Good", "Good", "Acceptable"]
 
-// Define the valid listing types that match the database constraint
-const VALID_LISTING_TYPES = ["sale", "swap", "donation"]
+// Define the valid listing types that match the database constraint exactly
+const VALID_LISTING_TYPES = ["sale", "swap", "donation"] as const
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,24 +40,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Convert listing type to database format
-    let listingType = data.listing_type?.toLowerCase() || "sale"
-
-    // Map "exchange" to "swap" to match database constraint
-    if (listingType === "exchange") {
-      listingType = "swap"
+    // Convert listing type to database format - ensure exact match
+    let listingType: string
+    switch (data.listing_type?.toLowerCase()) {
+      case "sale":
+        listingType = "sale"
+        break
+      case "exchange":
+      case "swap":
+        listingType = "swap"
+        break
+      case "donation":
+        listingType = "donation"
+        break
+      default:
+        console.error(`Invalid listing type received: ${data.listing_type}`)
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Invalid listing type: ${data.listing_type}. Must be 'sale', 'swap', or 'donation'`,
+          },
+          { status: 400 },
+        )
     }
 
-    // Validate that the listing type is one of the allowed values
-    if (!VALID_LISTING_TYPES.includes(listingType)) {
-      console.error(`Invalid listing type: ${listingType}. Must be one of: ${VALID_LISTING_TYPES.join(", ")}`)
-      return NextResponse.json(
-        { success: false, error: `Invalid listing type. Must be one of: ${VALID_LISTING_TYPES.join(", ")}` },
-        { status: 400 },
-      )
-    }
-
-    console.log("Using listing type:", listingType)
+    console.log(`Converted listing type from "${data.listing_type}" to "${listingType}"`)
 
     // Prepare update data with proper null handling
     const updateData = {

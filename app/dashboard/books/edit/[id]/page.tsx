@@ -176,26 +176,45 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       // Make sure user_id is set
       values.user_id = user.id
 
+      // Convert listing type to database format - ensure exact match
+      let dbListingType: string
+      switch (values.listing_type) {
+        case "Sale":
+          dbListingType = "sale"
+          break
+        case "Exchange":
+          dbListingType = "swap"
+          break
+        case "Donation":
+          dbListingType = "donation"
+          break
+        default:
+          dbListingType = "sale" // fallback
+      }
+
       // If listing type is not Sale, set price to null
       if (values.listing_type !== "Sale") {
         values.price = null
-      } else if (values.price === undefined) {
+      } else if (values.price === undefined || values.price === null) {
         // Ensure price is at least 0 for sale items
         values.price = 0
       }
 
-      // Ensure all optional fields are properly handled
-      values.isbn = values.isbn || null
-      values.description = values.description || null
-      values.cover_image = values.cover_image || null
-
-      // Create a copy of the values with the correct listing type format for the database
-      const dataForApi = {
-        ...values,
-        listing_type: listingTypeMap[values.listing_type] || "sale",
+      // Prepare the data for the database
+      const updateData = {
+        title: values.title.trim(),
+        author: values.author.trim(),
+        isbn: values.isbn?.trim() || null,
+        description: values.description?.trim() || null,
+        condition: values.condition,
+        cover_image: values.cover_image || null,
+        listing_type: dbListingType, // Use the converted value
+        price: dbListingType === "sale" ? values.price || 0 : null,
+        category_id: values.category_id,
+        user_id: user.id,
       }
 
-      console.log("Sending data to API:", dataForApi)
+      console.log("Sending update data:", updateData)
 
       // Call the API route to update the book
       const response = await fetch("/api/books/update", {
@@ -205,7 +224,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         },
         body: JSON.stringify({
           bookId: params.id,
-          data: dataForApi,
+          data: updateData,
         }),
       })
 
