@@ -211,7 +211,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         user_id: user.id, // Pass user_id for server-side validation
       }
 
-      console.log("Sending update data to API:", updateData)
+      console.log("Client: Sending update data to API:", updateData) // Added client-side log
 
       // Call the API route to update the book
       const response = await fetch("/api/books/update", {
@@ -234,7 +234,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       // Redirect to the books page
       router.push("/dashboard/books")
     } catch (err: any) {
-      console.error("Error updating book:", err)
+      console.error("Client: Error updating book:", err)
       setError(err.message || "Failed to update book")
     } finally {
       setIsSubmitting(false)

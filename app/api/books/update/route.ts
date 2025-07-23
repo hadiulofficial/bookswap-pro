@@ -10,7 +10,6 @@ const VALID_LISTING_TYPES = ["sale", "swap", "donation"] as const
 
 export async function POST(request: NextRequest) {
   try {
-    // Get the request body
     const body = await request.json()
     const { bookId, data } = body
 
@@ -21,10 +20,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
-    // Create Supabase client
     const supabase = createServerSupabaseClient()
 
-    // Check if the book exists and belongs to the user
     const { data: existingBook, error: bookError } = await supabase
       .from("books")
       .select("id, owner_id")
@@ -44,7 +41,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Convert incoming listing type to database format (lowercase)
     let listingType: (typeof VALID_LISTING_TYPES)[number]
     const incomingListingType = data.listing_type?.toLowerCase()
 
@@ -74,7 +70,6 @@ export async function POST(request: NextRequest) {
 
     console.log(`API: Converted listing type from UI "${data.listing_type}" to DB "${listingType}"`)
 
-    // Prepare update data with proper null handling and trimming
     const updateData = {
       title: data.title?.trim() || "",
       author: data.author?.trim() || "",
@@ -82,7 +77,7 @@ export async function POST(request: NextRequest) {
       description: data.description?.trim() || null,
       condition: data.condition,
       cover_image: data.cover_image || null,
-      listing_type: listingType, // Use the converted value
+      listing_type: listingType,
       price: listingType === "sale" ? (data.price !== null && data.price !== undefined ? data.price : 0) : null,
       category_id: data.category_id,
       updated_at: new Date().toISOString(),
@@ -90,7 +85,6 @@ export async function POST(request: NextRequest) {
 
     console.log("API: Prepared update data for database:", updateData)
 
-    // Update the book in the database
     const { error } = await supabase.from("books").update(updateData).eq("id", bookId)
 
     if (error) {
@@ -99,7 +93,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("API: Book updated successfully. Revalidating path.")
-    // Revalidate the books page
     revalidatePath("/dashboard/books")
 
     return NextResponse.json({ success: true })
