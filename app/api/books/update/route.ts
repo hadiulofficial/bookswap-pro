@@ -56,15 +56,12 @@ export async function POST(request: NextRequest) {
         listingType = "donation"
         break
       default:
-        console.error(
-          `API: Invalid listing type received: "${data.listing_type}". Expected one of: ${VALID_LISTING_TYPES.join(", ")}`,
-        )
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Invalid listing type: "${data.listing_type}". Must be 'sale', 'swap', or 'donation'`,
-          },
-          { status: 400 },
+        // Fallback to a default valid type if an unexpected value is received
+        // This makes the update "easier" as requested, by not failing on unknown types
+        // but it's crucial to understand this might mask a data entry issue.
+        listingType = "sale" // Default to 'sale' if invalid type is passed
+        console.warn(
+          `API: Invalid listing type received: "${data.listing_type}". Defaulting to "${listingType}". Expected one of: ${VALID_LISTING_TYPES.join(", ")}`,
         )
     }
 

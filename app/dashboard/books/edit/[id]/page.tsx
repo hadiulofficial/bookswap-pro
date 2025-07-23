@@ -211,7 +211,8 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         user_id: user.id, // Pass user_id for server-side validation
       }
 
-      console.log("Client: Sending update data to API:", updateData) // Added client-side log
+      console.log("Client: Converted UI listing type to DB format:", dbListingType) // Added client-side log for converted type
+      console.log("Client: Sending update data to API:", updateData)
 
       // Call the API route to update the book
       const response = await fetch("/api/books/update", {
