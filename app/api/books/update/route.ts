@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { bookId, data } = body
 
+    console.log("API: Received update request for bookId:", bookId, "with data:", data)
+
     if (!bookId || !data) {
+      console.error("API: Missing required fields (bookId or data)")
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
@@ -29,11 +32,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (bookError) {
-      console.error("Book error:", bookError)
+      console.error("API: Book lookup error:", bookError)
       return NextResponse.json({ success: false, error: "Book not found" }, { status: 404 })
     }
 
     if (existingBook.owner_id !== data.user_id) {
+      console.error("API: Permission denied. Owner ID mismatch.")
       return NextResponse.json(
         { success: false, error: "You don't have permission to update this book" },
         { status: 403 },
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
         break
       default:
         console.error(
-          `Invalid listing type received: "${data.listing_type}". Expected one of: ${VALID_LISTING_TYPES.join(", ")}`,
+          `API: Invalid listing type received: "${data.listing_type}". Expected one of: ${VALID_LISTING_TYPES.join(", ")}`,
         )
         return NextResponse.json(
           {
@@ -68,7 +72,7 @@ export async function POST(request: NextRequest) {
         )
     }
 
-    console.log(`Converted listing type from UI "${data.listing_type}" to DB "${listingType}"`)
+    console.log(`API: Converted listing type from UI "${data.listing_type}" to DB "${listingType}"`)
 
     // Prepare update data with proper null handling and trimming
     const updateData = {
@@ -84,20 +88,23 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     }
 
+    console.log("API: Prepared update data for database:", updateData)
+
     // Update the book in the database
     const { error } = await supabase.from("books").update(updateData).eq("id", bookId)
 
     if (error) {
-      console.error("Server: Error updating book:", error)
+      console.error("API: Error updating book in Supabase:", error)
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
+    console.log("API: Book updated successfully. Revalidating path.")
     // Revalidate the books page
     revalidatePath("/dashboard/books")
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error("Server: Exception updating book:", error)
+    console.error("API: Exception during book update:", error)
     return NextResponse.json(
       { success: false, error: error.message || "An unexpected error occurred" },
       { status: 500 },
