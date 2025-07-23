@@ -1,6 +1,8 @@
 import type React from "react"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
 
 export const metadata = {
   title: "BookSwap | Share Books, Connect Communities",
@@ -16,6 +18,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <style>{`
+          html {
+            font-family: ${GeistSans.style.fontFamily};
+            --font-sans: ${GeistSans.variable};
+            --font-mono: ${GeistMono.variable};
+          }
+        `}</style>
+      </head>
       <body>
         <AuthProvider>{children}</AuthProvider>
       </body>

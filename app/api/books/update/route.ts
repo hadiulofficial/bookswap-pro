@@ -40,42 +40,46 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Convert listing type to database format - ensure exact match
-    let listingType: string
-    switch (data.listing_type?.toLowerCase()) {
+    // Convert incoming listing type to database format (lowercase)
+    let listingType: (typeof VALID_LISTING_TYPES)[number]
+    const incomingListingType = data.listing_type?.toLowerCase()
+
+    switch (incomingListingType) {
       case "sale":
         listingType = "sale"
         break
-      case "exchange":
-      case "swap":
+      case "exchange": // UI value for swap
+      case "swap": // Database value for swap
         listingType = "swap"
         break
       case "donation":
         listingType = "donation"
         break
       default:
-        console.error(`Invalid listing type received: ${data.listing_type}`)
+        console.error(
+          `Invalid listing type received: "${data.listing_type}". Expected one of: ${VALID_LISTING_TYPES.join(", ")}`,
+        )
         return NextResponse.json(
           {
             success: false,
-            error: `Invalid listing type: ${data.listing_type}. Must be 'sale', 'swap', or 'donation'`,
+            error: `Invalid listing type: "${data.listing_type}". Must be 'sale', 'swap', or 'donation'`,
           },
           { status: 400 },
         )
     }
 
-    console.log(`Converted listing type from "${data.listing_type}" to "${listingType}"`)
+    console.log(`Converted listing type from UI "${data.listing_type}" to DB "${listingType}"`)
 
-    // Prepare update data with proper null handling
+    // Prepare update data with proper null handling and trimming
     const updateData = {
-      title: data.title,
-      author: data.author,
-      isbn: data.isbn || null,
-      description: data.description || null,
+      title: data.title?.trim() || "",
+      author: data.author?.trim() || "",
+      isbn: data.isbn?.trim() || null,
+      description: data.description?.trim() || null,
       condition: data.condition,
       cover_image: data.cover_image || null,
-      listing_type: listingType,
-      price: listingType === "sale" ? data.price || 0 : null,
+      listing_type: listingType, // Use the converted value
+      price: listingType === "sale" ? (data.price !== null && data.price !== undefined ? data.price : 0) : null,
       category_id: data.category_id,
       updated_at: new Date().toISOString(),
     }

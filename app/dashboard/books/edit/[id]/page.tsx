@@ -35,12 +35,12 @@ interface BookFormValues {
   user_id: string
 }
 
-// Map UI listing types to database listing types
+// Map UI listing types to database listing types (lowercase)
 const listingTypeMap = {
   Sale: "sale",
   Exchange: "swap",
   Donation: "donation",
-}
+} as const // Use 'as const' for type safety
 
 export default function EditBookPage({ params }: { params: { id: string } }) {
   const { user, isLoading: authLoading } = useAuth()
@@ -61,7 +61,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       description: "",
       condition: "",
       category_id: 0,
-      listing_type: "Exchange",
+      listing_type: "Exchange", // Default to Exchange
       price: null,
       cover_image: "",
       user_id: "",
@@ -112,11 +112,21 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         const categoriesArray = Array.isArray(categoriesData) ? categoriesData : []
         setCategories(categoriesArray)
 
-        // Convert listing_type to match our UI enum
-        let listingType = bookData.listing_type
-        if (listingType === "sale") listingType = "Sale"
-        if (listingType === "swap") listingType = "Exchange"
-        if (listingType === "donation") listingType = "Donation"
+        // Convert database listing_type to match our UI enum (e.g., "swap" to "Exchange")
+        let uiListingType: "Sale" | "Exchange" | "Donation"
+        switch (bookData.listing_type) {
+          case "sale":
+            uiListingType = "Sale"
+            break
+          case "swap":
+            uiListingType = "Exchange"
+            break
+          case "donation":
+            uiListingType = "Donation"
+            break
+          default:
+            uiListingType = "Exchange" // Fallback
+        }
 
         // Set form values
         form.reset({
@@ -126,7 +136,7 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
           description: bookData.description || "",
           condition: bookData.condition || "",
           category_id: bookData.category_id || 0,
-          listing_type: listingType as "Sale" | "Exchange" | "Donation",
+          listing_type: uiListingType,
           price: bookData.price,
           cover_image: bookData.cover_image || "",
           user_id: user.id,
@@ -176,21 +186,8 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
       // Make sure user_id is set
       values.user_id = user.id
 
-      // Convert listing type to database format - ensure exact match
-      let dbListingType: string
-      switch (values.listing_type) {
-        case "Sale":
-          dbListingType = "sale"
-          break
-        case "Exchange":
-          dbListingType = "swap"
-          break
-        case "Donation":
-          dbListingType = "donation"
-          break
-        default:
-          dbListingType = "sale" // fallback
-      }
+      // Convert UI listing type to database format (lowercase)
+      const dbListingType = listingTypeMap[values.listing_type]
 
       // If listing type is not Sale, set price to null
       if (values.listing_type !== "Sale") {
@@ -211,10 +208,10 @@ export default function EditBookPage({ params }: { params: { id: string } }) {
         listing_type: dbListingType, // Use the converted value
         price: dbListingType === "sale" ? values.price || 0 : null,
         category_id: values.category_id,
-        user_id: user.id,
+        user_id: user.id, // Pass user_id for server-side validation
       }
 
-      console.log("Sending update data:", updateData)
+      console.log("Sending update data to API:", updateData)
 
       // Call the API route to update the book
       const response = await fetch("/api/books/update", {
