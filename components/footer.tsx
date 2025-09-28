@@ -3,11 +3,12 @@ import { BookOpen, Facebook, Twitter, Instagram, Github } from "lucide-react"
 
 const navigation = {
   main: [
-    { name: "About", href: "#" },
+    { name: "About", href: "/about" },
     { name: "Blog", href: "/blog" },
-    { name: "Contact", href: "/contact" },
-    { name: "Privacy", href: "/privacy" },
-    { name: "Terms", href: "/terms" },
+    { name: "Jobs", href: "/jobs" },
+    { name: "Press", href: "/press" },
+    { name: "Accessibility", href: "/accessibility" },
+    { name: "Partners", href: "/partners" },
   ],
   social: [
     {
@@ -35,124 +36,34 @@ const navigation = {
 
 export function Footer() {
   return (
-    <footer className="bg-gray-900">
-      <div className="container">
-        <div className="py-12 md:py-16">
-          <div className="xl:grid xl:grid-cols-3 xl:gap-8">
-            <div className="space-y-8 xl:col-span-1">
-              <Link href="/" className="flex items-center space-x-2">
-                <BookOpen className="h-8 w-8 text-emerald-400" />
-                <span className="text-xl font-bold text-white">BookSwap</span>
+    <footer className="bg-white">
+      <div className="mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8">
+        <div className="mb-8 flex justify-center">
+          <Link href="/" className="flex items-center space-x-2">
+            <BookOpen className="h-8 w-8 text-emerald-600" />
+            <span className="text-xl font-bold text-gray-900">BookSwap</span>
+          </Link>
+        </div>
+        <nav className="-mb-6 columns-2 sm:flex sm:justify-center sm:space-x-12" aria-label="Footer">
+          {navigation.main.map((item) => (
+            <div key={item.name} className="pb-6">
+              <Link href={item.href} className="text-sm leading-6 text-gray-600 hover:text-gray-900">
+                {item.name}
               </Link>
-              <p className="text-sm leading-6 text-gray-300">
-                The ultimate platform for book lovers to buy, sell, donate, and exchange books with fellow readers
-                worldwide.
-              </p>
-              <div className="flex space-x-6">
-                {navigation.social.map((item) => (
-                  <Link key={item.name} href={item.href} className="text-gray-400 hover:text-gray-300">
-                    <span className="sr-only">{item.name}</span>
-                    <item.icon className="h-6 w-6" aria-hidden="true" />
-                  </Link>
-                ))}
-              </div>
             </div>
-            <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
-              <div className="md:grid md:grid-cols-2 md:gap-8">
-                <div>
-                  <h3 className="text-sm font-semibold leading-6 text-white">Platform</h3>
-                  <ul role="list" className="mt-6 space-y-4">
-                    <li>
-                      <Link href="/books" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Browse Books
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/dashboard" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Dashboard
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/signup" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Sign Up
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/login" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Sign In
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-                <div className="mt-10 md:mt-0">
-                  <h3 className="text-sm font-semibold leading-6 text-white">Support</h3>
-                  <ul role="list" className="mt-6 space-y-4">
-                    <li>
-                      <Link href="/contact" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Contact
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="#" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Help Center
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="#" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Community
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div className="md:grid md:grid-cols-2 md:gap-8">
-                <div>
-                  <h3 className="text-sm font-semibold leading-6 text-white">Company</h3>
-                  <ul role="list" className="mt-6 space-y-4">
-                    <li>
-                      <Link href="#" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        About
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/blog" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Blog
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="#" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Careers
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-                <div className="mt-10 md:mt-0">
-                  <h3 className="text-sm font-semibold leading-6 text-white">Legal</h3>
-                  <ul role="list" className="mt-6 space-y-4">
-                    <li>
-                      <Link href="/privacy" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Privacy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/terms" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Terms
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/cookies" className="text-sm leading-6 text-gray-300 hover:text-white">
-                        Cookies
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
+          ))}
+        </nav>
+        <div className="mt-10 flex justify-center space-x-10">
+          {navigation.social.map((item) => (
+            <Link key={item.name} href={item.href} className="text-gray-400 hover:text-gray-500">
+              <span className="sr-only">{item.name}</span>
+              <item.icon className="h-6 w-6" aria-hidden="true" />
+            </Link>
+          ))}
         </div>
-        <div className="border-t border-gray-700 py-8">
-          <p className="text-xs leading-5 text-gray-400 text-center">&copy; 2025 BookSwap. All rights reserved.</p>
-        </div>
+        <p className="mt-10 text-center text-xs leading-5 text-gray-500">
+          &copy; 2025 BookSwap, Inc. All rights reserved.
+        </p>
       </div>
     </footer>
   )
