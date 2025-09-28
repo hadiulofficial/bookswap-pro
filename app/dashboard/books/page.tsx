@@ -1,445 +1,364 @@
-"use client"
-
-import React from "react"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
-import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { DashboardTitle } from "@/components/dashboard/title"
-import { Plus, BookOpen, ChevronLeft, ChevronRight, Search, Edit, Eye, BookMarked } from "lucide-react"
-import { supabase } from "@/lib/supabase/client"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { BookOpen, Plus, Search, Filter, Edit, Trash2, Eye } from "lucide-react"
+import Image from "next/image"
 
-export default function BooksPage() {
-  const { user, isLoading: authLoading } = useAuth()
-  const router = useRouter()
-  const [books, setBooks] = useState<any[]>([])
-  const [loadingBooks, setLoadingBooks] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+interface Book {
+  id: string
+  title: string
+  author: string
+  genre: string
+  condition: string
+  listing_type: string
+  price: number | null
+  description: string
+  image_url: string | null
+  created_at: string
+  status: string
+}
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalBooks, setTotalBooks] = useState(0)
-  const [booksPerPage, setBooksPerPage] = useState(6)
+interface BooksPageProps {
+  searchParams: {
+    search?: string
+    genre?: string
+    condition?: string
+    listing_type?: string
+    page?: string
+  }
+}
 
-  // Filter state
-  const [filterType, setFilterType] = useState<string>("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isFiltering, setIsFiltering] = useState(false)
+async function getBooks(userId: string, searchParams: BooksPageProps["searchParams"]) {
+  const supabase = createServerComponentClient({ cookies })
 
-  useEffect(() => {
-    // If not loading and no user, redirect to login
-    if (!authLoading && !user) {
-      router.push("/login")
-      return
-    }
+  let query = supabase.from("books").select("*").eq("user_id", userId).order("created_at", { ascending: false })
 
-    // Only fetch books if we have a user
-    if (user) {
-      fetchBooks()
-    }
-  }, [user, authLoading, router, currentPage, booksPerPage, filterType, searchQuery])
-
-  const fetchBooks = async () => {
-    try {
-      setLoadingBooks(true)
-      setError(null)
-      setIsFiltering(!!searchQuery || filterType !== "all")
-
-      // Calculate range for pagination
-      const from = (currentPage - 1) * booksPerPage
-      const to = from + booksPerPage - 1
-
-      // Start building the query
-      let query = supabase.from("books").select("*").eq("owner_id", user?.id)
-
-      // Apply filters if any
-      if (filterType !== "all") {
-        query = query.eq("listing_type", filterType)
-      }
-
-      if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,author.ilike.%${searchQuery}%`)
-      }
-
-      // First, get the total count
-      const countQuery = supabase.from("books").select("id", { count: "exact" }).eq("owner_id", user?.id)
-
-      // Apply the same filters to the count query
-      if (filterType !== "all") {
-        countQuery.eq("listing_type", filterType)
-      }
-
-      if (searchQuery) {
-        countQuery.or(`title.ilike.%${searchQuery}%,author.ilike.%${searchQuery}%`)
-      }
-
-      const { count, error: countError } = await countQuery
-
-      if (countError) {
-        throw countError
-      }
-
-      setTotalBooks(count || 0)
-
-      // Then get paginated data
-      const { data, error } = await query.order("created_at", { ascending: false }).range(from, to)
-
-      if (error) {
-        throw error
-      }
-
-      setBooks(data || [])
-    } catch (err: any) {
-      console.error("Error fetching books:", err)
-      setError(err.message || "Failed to load books")
-    } finally {
-      setLoadingBooks(false)
-    }
+  // Apply filters
+  if (searchParams.search) {
+    query = query.or(`title.ilike.%${searchParams.search}%,author.ilike.%${searchParams.search}%`)
   }
 
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+  if (searchParams.genre && searchParams.genre !== "all") {
+    query = query.eq("genre", searchParams.genre)
   }
 
-  const handlePerPageChange = (value: string) => {
-    setBooksPerPage(Number.parseInt(value))
-    setCurrentPage(1) // Reset to first page when changing items per page
+  if (searchParams.condition && searchParams.condition !== "all") {
+    query = query.eq("condition", searchParams.condition)
   }
 
-  const handleFilterChange = (value: string) => {
-    setFilterType(value)
-    setCurrentPage(1) // Reset to first page when filtering
+  if (searchParams.listing_type && searchParams.listing_type !== "all") {
+    query = query.eq("listing_type", searchParams.listing_type)
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setCurrentPage(1) // Reset to first page when searching
+  // Pagination
+  const page = Number.parseInt(searchParams.page || "1")
+  const limit = 12
+  const from = (page - 1) * limit
+  const to = from + limit - 1
+
+  query = query.range(from, to)
+
+  const { data: books, error, count } = await query
+
+  if (error) {
+    console.error("Error fetching books:", error)
+    return { books: [], totalCount: 0 }
   }
 
-  const clearFilters = () => {
-    setFilterType("all")
-    setSearchQuery("")
-    setCurrentPage(1)
+  // Get total count for pagination
+  const { count: totalCount } = await supabase
+    .from("books")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+
+  return { books: books || [], totalCount: totalCount || 0 }
+}
+
+async function getGenres() {
+  const supabase = createServerComponentClient({ cookies })
+
+  const { data, error } = await supabase.from("books").select("genre").not("genre", "is", null)
+
+  if (error) {
+    console.error("Error fetching genres:", error)
+    return []
   }
 
-  const totalPages = Math.ceil(totalBooks / booksPerPage)
+  const uniqueGenres = [...new Set(data?.map((book) => book.genre) || [])]
+  return uniqueGenres.filter(Boolean)
+}
 
-  // Only redirect if auth is not loading and there's no user
-  if (!authLoading && !user) {
-    return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">You must be logged in to view your books</h1>
-          <Link href="/login">
-            <Button>Log In</Button>
-          </Link>
-        </div>
-      </div>
-    )
+export default async function BooksPage({ searchParams }: BooksPageProps) {
+  const supabase = createServerComponentClient({ cookies })
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    redirect("/login")
   }
 
-  // Render the page layout even while loading
+  const [{ books, totalCount }, genres] = await Promise.all([getBooks(user.id, searchParams), getGenres()])
+
+  const currentPage = Number.parseInt(searchParams.page || "1")
+  const totalPages = Math.ceil(totalCount / 12)
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <DashboardTitle title="My Books" description="Manage your book listings" />
-        <Button onClick={() => router.push("/dashboard/books/add")} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="mr-2 h-4 w-4" /> Add Book
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">My Books</h1>
+          <p className="text-muted-foreground">Manage your book collection and listings</p>
+        </div>
+        <Button asChild>
+          <Link href="/dashboard/books/add">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Book
+          </Link>
         </Button>
       </div>
 
-      {/* Filters and search */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-        <div className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="w-full md:w-auto">
-            <label htmlFor="filter-type" className="block text-sm font-medium mb-1">
-              Listing Type
-            </label>
-            <Select value={filterType} onValueChange={handleFilterChange}>
-              <SelectTrigger id="filter-type" className="w-full md:w-[180px]">
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Exchange">Exchange</SelectItem>
-                <SelectItem value="Sell">Sell</SelectItem>
-                <SelectItem value="Donate">Donate</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <form onSubmit={handleSearch} className="flex-1">
-            <label htmlFor="search-books" className="block text-sm font-medium mb-1">
-              Search Books
-            </label>
-            <div className="flex gap-2">
-              <Input
-                id="search-books"
-                type="search"
-                placeholder="Search by title or author..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1"
-              />
-              <Button type="submit" variant="outline" size="icon">
-                <Search className="h-4 w-4" />
-              </Button>
+      {/* Search and Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Search & Filter
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2">
+              <label htmlFor="search" className="text-sm font-medium">
+                Search Books
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  placeholder="Search by title or author..."
+                  className="pl-10"
+                  defaultValue={searchParams.search || ""}
+                />
+              </div>
             </div>
-          </form>
 
-          <div className="w-full md:w-auto">
-            <label htmlFor="books-per-page" className="block text-sm font-medium mb-1">
-              Books per page
-            </label>
-            <Select value={booksPerPage.toString()} onValueChange={handlePerPageChange}>
-              <SelectTrigger id="books-per-page" className="w-full md:w-[100px]">
-                <SelectValue placeholder="Show" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="6">6</SelectItem>
-                <SelectItem value="12">12</SelectItem>
-                <SelectItem value="24">24</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <label htmlFor="genre" className="text-sm font-medium">
+                Genre
+              </label>
+              <Select defaultValue={searchParams.genre || "all"}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Genres" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Genres</SelectItem>
+                  {genres.map((genre) => (
+                    <SelectItem key={genre} value={genre}>
+                      {genre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="condition" className="text-sm font-medium">
+                Condition
+              </label>
+              <Select defaultValue={searchParams.condition || "all"}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Conditions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Conditions</SelectItem>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="like_new">Like New</SelectItem>
+                  <SelectItem value="good">Good</SelectItem>
+                  <SelectItem value="fair">Fair</SelectItem>
+                  <SelectItem value="poor">Poor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="listing_type" className="text-sm font-medium">
+                Listing Type
+              </label>
+              <Select defaultValue={searchParams.listing_type || "all"}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="sale">For Sale</SelectItem>
+                  <SelectItem value="exchange">Exchange</SelectItem>
+                  <SelectItem value="donation">Donation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {isFiltering && (
-            <Button variant="ghost" onClick={clearFilters} className="h-10">
-              Clear Filters
+      {/* Books Grid */}
+      {books.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No books found</h3>
+            <p className="text-muted-foreground text-center mb-6">
+              {searchParams.search || searchParams.genre || searchParams.condition || searchParams.listing_type
+                ? "Try adjusting your search filters or add your first book."
+                : "You haven't added any books yet. Start building your collection!"}
+            </p>
+            <Button asChild>
+              <Link href="/dashboard/books/add">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Your First Book
+              </Link>
             </Button>
-          )}
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-md mb-4">
-          <p>{error}</p>
-          <Button variant="outline" size="sm" onClick={fetchBooks} className="mt-2">
-            Try Again
-          </Button>
-        </div>
-      )}
-
-      {loadingBooks ? (
-        // Skeleton loading state that maintains the layout
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: booksPerPage }).map((_, i) => (
-            <Card
-              key={i}
-              className="overflow-hidden border border-gray-200 hover:border-emerald-200 transition-all duration-200"
-            >
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-5 w-20" />
-                </div>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <div className="flex gap-4">
-                  <Skeleton className="h-36 w-24 rounded-md" />
-                  <div className="flex-1">
-                    <Skeleton className="h-4 w-1/2 mb-4" />
-                    <Skeleton className="h-4 w-full mb-2" />
-                    <Skeleton className="h-4 w-full mb-2" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <div className="mt-4 flex items-center gap-2">
-                      <Skeleton className="h-5 w-20" />
-                      <Skeleton className="h-5 w-20" />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between pt-2">
-                <Skeleton className="h-9 w-24" />
-                <Skeleton className="h-9 w-16" />
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      ) : books.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200">
-          <BookMarked className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <h2 className="text-xl font-medium mb-2">
-            {isFiltering ? "No books match your filters" : "You haven't added any books yet"}
-          </h2>
-          <p className="text-gray-500 mb-4">
-            {isFiltering ? (
-              <>
-                Try adjusting your search criteria or{" "}
-                <button onClick={clearFilters} className="text-emerald-600 hover:underline">
-                  clear all filters
-                </button>
-              </>
-            ) : (
-              "Add your first book to start exchanging with others"
-            )}
-          </p>
-          {!isFiltering && (
-            <Button onClick={() => router.push("/dashboard/books/add")} className="bg-emerald-600 hover:bg-emerald-700">
-              Add Your First Book
-            </Button>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {books.map((book) => (
-              <Card
-                key={book.id}
-                className="flex flex-col overflow-hidden border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all duration-200"
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl line-clamp-1" title={book.title}>
-                      {book.title}
-                    </CardTitle>
-                    <Badge
-                      variant={
-                        book.listing_type === "Exchange"
-                          ? "default"
-                          : book.listing_type === "Sell"
-                            ? "secondary"
-                            : "outline"
-                      }
-                      className="ml-2 flex-shrink-0"
-                    >
-                      {book.listing_type}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-grow pb-2">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-shrink-0">
-                      {book.cover_image ? (
-                        <div className="relative w-24 h-36 overflow-hidden rounded-md border border-gray-200 shadow-sm">
-                          <Image
-                            src={book.cover_image || "/placeholder.svg"}
-                            alt={`Cover for ${book.title}`}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, 96px"
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex w-24 h-36 flex-col items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 p-2">
-                          <BookOpen className="h-8 w-8 text-gray-400" />
-                          <p className="text-xs text-gray-500">No cover</p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-700">By {book.author || "Unknown Author"}</p>
-                      {book.description && (
-                        <p className="text-gray-600 mt-2 text-sm line-clamp-3" title={book.description}>
-                          {book.description}
-                        </p>
-                      )}
-                      <div className="mt-4 flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="bg-gray-50">
-                          {book.condition}
-                        </Badge>
-                        <Badge
-                          variant={
-                            book.status === "Available"
-                              ? "success"
-                              : book.status === "Reserved"
-                                ? "warning"
-                                : "secondary"
-                          }
-                        >
-                          {book.status}
-                        </Badge>
-                        {book.listing_type === "Sell" && book.price && (
-                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
-                            ${book.price.toFixed(2)}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between pt-2 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push(`/dashboard/books/${book.id}`)}
-                    className="text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                  >
-                    <Eye className="mr-1 h-4 w-4" /> View
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => router.push(`/dashboard/books/edit/${book.id}`)}
-                    className="text-gray-600 hover:text-gray-900"
-                  >
-                    <Edit className="mr-1 h-4 w-4" /> Edit
-                  </Button>
-                </CardFooter>
-              </Card>
+              <BookCard key={book.id} book={book} />
             ))}
           </div>
 
-          {/* Pagination controls */}
+          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-8 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-              <div className="text-sm text-gray-600">
-                Showing {Math.min((currentPage - 1) * booksPerPage + 1, totalBooks)} to{" "}
-                {Math.min(currentPage * booksPerPage, totalBooks)} of {totalBooks} books
+            <div className="flex items-center justify-center space-x-2">
+              <Button variant="outline" size="sm" disabled={currentPage <= 1} asChild>
+                <Link href={`?${new URLSearchParams({ ...searchParams, page: String(currentPage - 1) }).toString()}`}>
+                  Previous
+                </Link>
+              </Button>
+
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = i + 1
+                  return (
+                    <Button key={pageNum} variant={currentPage === pageNum ? "default" : "outline"} size="sm" asChild>
+                      <Link href={`?${new URLSearchParams({ ...searchParams, page: String(pageNum) }).toString()}`}>
+                        {pageNum}
+                      </Link>
+                    </Button>
+                  )
+                })}
               </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(
-                      (page) =>
-                        page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1),
-                    )
-                    .map((page, i, arr) => (
-                      <React.Fragment key={page}>
-                        {i > 0 && arr[i - 1] !== page - 1 && <span className="text-gray-500">...</span>}
-                        <Button
-                          variant={currentPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handlePageChange(page)}
-                          className={`h-8 w-8 p-0 ${currentPage === page ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
-                        >
-                          {page}
-                        </Button>
-                      </React.Fragment>
-                    ))}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
+
+              <Button variant="outline" size="sm" disabled={currentPage >= totalPages} asChild>
+                <Link href={`?${new URLSearchParams({ ...searchParams, page: String(currentPage + 1) }).toString()}`}>
+                  Next
+                </Link>
+              </Button>
             </div>
           )}
         </>
       )}
+
+      <div className="text-sm text-muted-foreground">
+        Showing {books.length} of {totalCount} books
+      </div>
     </div>
+  )
+}
+
+function BookCard({ book }: { book: Book }) {
+  const getListingTypeColor = (type: string) => {
+    switch (type) {
+      case "sale":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      case "exchange":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+      case "donation":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+    }
+  }
+
+  const getConditionColor = (condition: string) => {
+    switch (condition) {
+      case "new":
+        return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300"
+      case "like_new":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+      case "good":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+      case "fair":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300"
+      case "poor":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300"
+    }
+  }
+
+  return (
+    <Card className="group hover:shadow-lg transition-shadow">
+      <div className="aspect-[3/4] relative overflow-hidden rounded-t-lg">
+        {book.image_url ? (
+          <Image
+            src={book.image_url || "/placeholder.svg"}
+            alt={book.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-200"
+          />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <BookOpen className="h-12 w-12 text-muted-foreground" />
+          </div>
+        )}
+        <div className="absolute top-2 right-2 flex gap-1">
+          <Badge className={getListingTypeColor(book.listing_type)}>
+            {book.listing_type === "sale" ? "Sale" : book.listing_type === "exchange" ? "Exchange" : "Donation"}
+          </Badge>
+        </div>
+      </div>
+
+      <CardHeader className="pb-2">
+        <CardTitle className="line-clamp-2 text-lg">{book.title}</CardTitle>
+        <CardDescription className="line-clamp-1">by {book.author}</CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Badge variant="outline" className={getConditionColor(book.condition)}>
+            {book.condition.replace("_", " ")}
+          </Badge>
+          {book.listing_type === "sale" && book.price && <span className="font-semibold text-lg">${book.price}</span>}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/dashboard/books/${book.id}`}>
+              <Eye className="h-4 w-4 mr-1" />
+              View
+            </Link>
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/dashboard/books/edit/${book.id}`}>
+              <Edit className="h-4 w-4 mr-1" />
+              Edit
+            </Link>
+          </Button>
+          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive bg-transparent">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

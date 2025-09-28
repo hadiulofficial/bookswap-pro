@@ -1,34 +1,54 @@
 import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Toaster } from "@/components/ui/toaster"
 
-export const metadata = {
-  title: "BookSwap | Share Books, Connect Communities",
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+})
+
+export const metadata: Metadata = {
+  title: "BookSwap - Share Books, Connect Readers",
   description:
     "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
-    generator: 'v0.dev'
+  keywords: "books, book exchange, book swap, buy books, sell books, donate books",
+  authors: [{ name: "BookSwap Team" }],
+  openGraph: {
+    title: "BookSwap - Share Books, Connect Readers",
+    description:
+      "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BookSwap - Share Books, Connect Readers",
+    description:
+      "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+    generator: 'v0.app'
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en">
-      <head>
-        <style>{`
-          html {
-            font-family: ${GeistSans.style.fontFamily};
-            --font-sans: ${GeistSans.variable};
-            --font-mono: ${GeistMono.variable};
-          }
-        `}</style>
-      </head>
-      <body>
-        <AuthProvider>{children}</AuthProvider>
+    <html lang="en" className={inter.variable}>
+      <body className={`${inter.className} antialiased`}>
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   )
