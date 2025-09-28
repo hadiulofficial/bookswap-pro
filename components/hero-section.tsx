@@ -22,15 +22,18 @@ export function HeroSection() {
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-6xl lg:text-7xl">
-              Your Next Great Read is Just a{" "}
+              Share Books,
+              <br />
+              Convert Readers,
+              <br />
+              And{" "}
               <span className="bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
-                Swap Away
+                Connect
               </span>
             </h1>
 
             <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300 sm:text-xl">
-              Exchange, buy, and donate books with fellow book enthusiasts. Turn your finished reads into new adventures
-              while building a sustainable reading community.
+              Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
