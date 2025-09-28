@@ -2,8 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
+import { AuthProvider } from "@/contexts/auth-context"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -12,28 +12,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "BookSwap - Share Books, Connect Readers",
-  description:
-    "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
-  keywords: "books, book exchange, book swap, buy books, sell books, donate books",
-  authors: [{ name: "BookSwap Team" }],
-  openGraph: {
-    title: "BookSwap - Share Books, Connect Readers",
-    description:
-      "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
-    type: "website",
-    locale: "en_US",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "BookSwap - Share Books, Connect Readers",
-    description:
-      "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  title: "BookSwap - Share Books, Convert Readers, And Connect",
+  description: "Join thousands of book lovers in our community. Buy, sell, donate, or swap books with fellow readers.",
     generator: 'v0.app'
 }
 

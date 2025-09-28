@@ -6,145 +6,137 @@ export async function PUT(request: NextRequest) {
   try {
     const supabase = createRouteHandlerClient({ cookies })
 
-    // Get the current user
     const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (authError || !user) {
-      console.error("Authentication error:", authError)
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await request.json()
-    console.log("Update request body:", body)
+    console.log("Received update request:", body)
 
-    const { id, title, author, genre, condition, listing_type, price, description, image_url } = body
-
-    if (!id) {
-      return NextResponse.json({ error: "Book ID is required" }, { status: 400 })
-    }
+    const { id, title, author, description, category_id, condition, listing_type, price, status, image_url } = body
 
     // Validate required fields
-    if (!title || !author || !genre || !condition || !listing_type) {
-      return NextResponse.json(
-        {
-          error: "Missing required fields: title, author, genre, condition, listing_type",
-        },
-        { status: 400 },
-      )
+    if (!id || !title || !author || !category_id || !condition || !listing_type || !status) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     // Validate listing_type against expected values
-    const validListingTypes = ["sale", "exchange", "donation"]
-    if (!validListingTypes.includes(listing_type)) {
-      console.error("Invalid listing_type:", listing_type)
-      return NextResponse.json(
-        {
-          error: `Invalid listing_type. Must be one of: ${validListingTypes.join(", ")}`,
-        },
-        { status: 400 },
-      )
+    const validListingTypes = ["sale", "swap", "donation"]
+    let listing_type_value = listing_type
+    if (!validListingTypes.includes(listing_type_value)) {
+      console.log(`Invalid listing_type: ${listing_type_value}, defaulting to 'sale'`)
+      // Default to 'sale' if invalid
+      listing_type_value = "sale"
     }
 
-    // Validate condition against expected values
+    // Validate condition
     const validConditions = ["new", "like_new", "good", "fair", "poor"]
     if (!validConditions.includes(condition)) {
-      console.error("Invalid condition:", condition)
       return NextResponse.json(
-        {
-          error: `Invalid condition. Must be one of: ${validConditions.join(", ")}`,
-        },
+        { error: `Invalid condition. Must be one of: ${validConditions.join(", ")}` },
         { status: 400 },
       )
     }
 
-    // Prepare the update data
+    // Validate status
+    const validStatuses = ["available", "sold", "reserved"]
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json(
+        { error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
+        { status: 400 },
+      )
+    }
+
+    // Prepare update data
     const updateData = {
-      title: title.trim(),
-      author: author.trim(),
-      genre: genre.trim(),
+      title,
+      author,
+      description: description || null,
+      category_id,
       condition,
-      listing_type,
-      price: listing_type === "sale" && price ? Number.parseFloat(price) : null,
-      description: description?.trim() || null,
-      image_url: image_url?.trim() || null,
+      listing_type: listing_type_value,
+      price: listing_type_value === "sale" && price ? Number.parseFloat(price) : null,
+      status,
+      image_url: image_url || null,
       updated_at: new Date().toISOString(),
     }
 
-    console.log("Prepared update data:", updateData)
+    console.log("Updating book with data:", updateData)
 
     // First, verify the book exists and belongs to the user
     const { data: existingBook, error: fetchError } = await supabase
       .from("books")
       .select("id, user_id")
       .eq("id", id)
-      .eq("user_id", user.id)
       .single()
 
     if (fetchError || !existingBook) {
-      console.error("Book not found or access denied:", fetchError)
-      return NextResponse.json(
-        {
-          error: "Book not found or you do not have permission to edit it",
-        },
-        { status: 404 },
-      )
+      console.error("Book not found:", fetchError)
+      return NextResponse.json({ error: "Book not found" }, { status: 404 })
+    }
+
+    if (existingBook.user_id !== session.user.id) {
+      return NextResponse.json({ error: "Unauthorized to update this book" }, { status: 403 })
     }
 
     // Update the book
-    const { data: updatedBook, error: updateError } = await supabase
+    const { data, error } = await supabase
       .from("books")
       .update(updateData)
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", session.user.id)
       .select()
       .single()
 
-    if (updateError) {
-      console.error("Database update error:", updateError)
+    if (error) {
+      console.error("Supabase update error:", error)
 
       // Handle specific constraint violations
-      if (updateError.message?.includes("books_listing_type_check")) {
+      if (error.message.includes("books_listing_type_check")) {
         return NextResponse.json(
           {
-            error: "Invalid listing type. Please select a valid option and try again.",
+            error: 'Invalid listing type. Please use "sale", "swap", or "donation".',
+            details: error.message,
           },
           { status: 400 },
         )
       }
 
-      if (updateError.message?.includes("books_condition_check")) {
+      if (error.message.includes("books_condition_check")) {
         return NextResponse.json(
           {
-            error: "Invalid condition. Please select a valid option and try again.",
+            error: 'Invalid condition. Please use "new", "like_new", "good", "fair", or "poor".',
+            details: error.message,
           },
           { status: 400 },
         )
       }
 
-      return NextResponse.json(
-        {
-          error: "Failed to update book. Please try again.",
-        },
-        { status: 500 },
-      )
+      if (error.message.includes("books_status_check")) {
+        return NextResponse.json(
+          {
+            error: 'Invalid status. Please use "available", "sold", or "reserved".',
+            details: error.message,
+          },
+          { status: 400 },
+        )
+      }
+
+      return NextResponse.json({ error: "Failed to update book", details: error.message }, { status: 500 })
     }
 
-    console.log("Book updated successfully:", updatedBook)
+    console.log("Book updated successfully:", data)
 
     return NextResponse.json({
       message: "Book updated successfully",
-      book: updatedBook,
+      book: data,
     })
   } catch (error) {
-    console.error("Unexpected error in book update:", error)
-    return NextResponse.json(
-      {
-        error: "An unexpected error occurred. Please try again.",
-      },
-      { status: 500 },
-    )
+    console.error("Unexpected error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
