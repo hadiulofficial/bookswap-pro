@@ -6,102 +6,110 @@ export type Database = {
       books: {
         Row: {
           id: string
+          created_at: string
+          updated_at: string
           title: string
           author: string
           isbn: string | null
           description: string | null
           condition: string
-          listing_type: string
           price: number | null
-          image_url: string | null
+          listing_type: string
+          status: string
           user_id: string
-          created_at: string
-          updated_at: string
           category_id: string | null
-          is_available: boolean
+          image_url: string | null
+          location: string | null
         }
         Insert: {
           id?: string
+          created_at?: string
+          updated_at?: string
           title: string
           author: string
           isbn?: string | null
           description?: string | null
           condition: string
-          listing_type: string
           price?: number | null
-          image_url?: string | null
+          listing_type: string
+          status?: string
           user_id: string
-          created_at?: string
-          updated_at?: string
           category_id?: string | null
-          is_available?: boolean
+          image_url?: string | null
+          location?: string | null
         }
         Update: {
           id?: string
+          created_at?: string
+          updated_at?: string
           title?: string
           author?: string
           isbn?: string | null
           description?: string | null
           condition?: string
-          listing_type?: string
           price?: number | null
-          image_url?: string | null
+          listing_type?: string
+          status?: string
           user_id?: string
-          created_at?: string
-          updated_at?: string
           category_id?: string | null
-          is_available?: boolean
+          image_url?: string | null
+          location?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "books_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+      }
+      categories: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          created_at?: string
+        }
       }
       profiles: {
         Row: {
           id: string
+          created_at: string
+          updated_at: string
           email: string
           full_name: string | null
           avatar_url: string | null
-          location: string | null
           bio: string | null
-          created_at: string
-          updated_at: string
+          location: string | null
+          phone: string | null
         }
         Insert: {
           id: string
+          created_at?: string
+          updated_at?: string
           email: string
           full_name?: string | null
           avatar_url?: string | null
-          location?: string | null
           bio?: string | null
-          created_at?: string
-          updated_at?: string
+          location?: string | null
+          phone?: string | null
         }
         Update: {
           id?: string
+          created_at?: string
+          updated_at?: string
           email?: string
           full_name?: string | null
           avatar_url?: string | null
-          location?: string | null
           bio?: string | null
-          created_at?: string
-          updated_at?: string
+          location?: string | null
+          phone?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
