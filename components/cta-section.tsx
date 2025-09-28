@@ -1,48 +1,57 @@
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ArrowRight } from "lucide-react"
+import Link from "next/link"
 
 export function CtaSection() {
   return (
-    <section className="py-16 md:py-24 bg-emerald-50 dark:bg-emerald-950/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-center space-y-6 text-center">
-          <div className="space-y-3 max-w-[800px]">
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Ready to Start Swapping?</h2>
-            <p className="text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
-              Join thousands of book lovers already using BookSwap to share their love of reading.
-            </p>
-          </div>
-          <div className="w-full max-w-md space-y-3">
-            <form className="flex flex-col sm:flex-row gap-3">
-              <Input className="flex-1" placeholder="Enter your email" type="email" required />
-              <Button type="submit" className="sm:w-auto w-full">
-                Get Started
-              </Button>
-            </form>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              By signing up, you agree to our{" "}
-              <Link href="#" className="underline underline-offset-2 hover:text-emerald-600">
-                Terms & Conditions
+    <section className="py-24 sm:py-32 bg-emerald-600">
+      <div className="container">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Ready to start your book trading journey?
+          </h2>
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-emerald-100">
+            Join thousands of book lovers who are already buying, selling, donating, and exchanging books on BookSwap.
+          </p>
+          <div className="mt-10 flex items-center justify-center gap-x-6">
+            <Button size="lg" variant="secondary" asChild>
+              <Link href="/signup">
+                Get Started Free
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
-            </p>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-white text-white hover:bg-white hover:text-emerald-600 bg-transparent"
+              asChild
+            >
+              <Link href="/books">Browse Books</Link>
+            </Button>
           </div>
-        </div>
-        <div className="mt-16 grid grid-cols-1 gap-8 border-t pt-10 sm:grid-cols-3">
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="text-3xl font-bold">10,000+</div>
-            <p className="text-gray-500 dark:text-gray-400">Active Users</p>
-          </div>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="text-3xl font-bold">50,000+</div>
-            <p className="text-gray-500 dark:text-gray-400">Books Exchanged</p>
-          </div>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="text-3xl font-bold">1,000+</div>
-            <p className="text-gray-500 dark:text-gray-400">Book Clubs</p>
+
+          {/* Newsletter Signup */}
+          <div className="mt-16 sm:mt-20">
+            <div className="mx-auto max-w-md">
+              <h3 className="text-lg font-semibold text-white mb-4">Stay updated</h3>
+              <div className="flex gap-x-4">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-emerald-100"
+                />
+                <Button variant="secondary" size="sm">
+                  Subscribe
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
   )
 }
+
+// Export alias for compatibility
+export { CtaSection as CTASection }

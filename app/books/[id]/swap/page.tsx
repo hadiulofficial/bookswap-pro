@@ -1,25 +1,20 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Loader2, BookOpen, ArrowLeft, RefreshCw, Check, AlertCircle } from "lucide-react"
+import { Loader2, BookOpen, ArrowLeft, RefreshCw, User, Check, Users, MessageCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
-import { requestBookSwap } from "@/app/actions/swap-actions"
 
-export default function SwapRequestPage() {
+export default function BookSwapPage() {
   const router = useRouter()
   const params = useParams()
   const bookId = params.id as string
@@ -27,30 +22,30 @@ export default function SwapRequestPage() {
 
   const [book, setBook] = useState<any>(null)
   const [owner, setOwner] = useState<any>(null)
+  const [category, setCategory] = useState<any>(null)
+  const [userBooks, setUserBooks] = useState<any[]>([])
+  const [selectedBook, setSelectedBook] = useState<string>("")
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState("")
-  const [myBooks, setMyBooks] = useState<any[]>([])
-  const [selectedBookId, setSelectedBookId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user) {
-      router.push("/login")
-      return
-    }
-
     fetchBookDetails()
-    fetchMyBooks()
-  }, [bookId, user, router])
+    if (user) {
+      fetchUserBooks()
+    }
+  }, [bookId, user])
 
   const fetchBookDetails = async () => {
     try {
       setLoading(true)
-      setError(null) // Explicitly clear previous errors before fetching
+      setError(null)
 
-      // Fetch the book first
-      const { data: bookData, error: bookError } = await supabase.from("books").select("*").eq("id", bookId).single()
+      const { data: bookData, error: bookError } = await supabase
+        .from("books")
+        .select("*, profiles(id, username, full_name, location, created_at)")
+        .eq("id", bookId)
+        .single()
 
       if (bookError) {
         throw bookError
@@ -60,31 +55,21 @@ export default function SwapRequestPage() {
         throw new Error("Book not found")
       }
 
-      // Check if book is available for exchange - use case insensitive comparison
-      const listingType = bookData.listing_type.toLowerCase()
-      if (listingType !== "exchange" && listingType !== "swap") {
-        throw new Error("This book is not available for exchange")
-      }
-
-      // Check if user is not the owner
-      if (bookData.owner_id === user?.id) {
-        throw new Error("You cannot swap with your own book")
-      }
-
-      // Now fetch the owner's profile separately
-      const { data: ownerData, error: ownerError } = await supabase
-        .from("profiles")
-        .select("id, username, full_name, location, created_at")
-        .eq("id", bookData.owner_id)
-        .single()
-
-      if (ownerError) {
-        console.error("Error fetching owner:", ownerError)
-        // Continue even if owner fetch fails
-      }
-
       setBook(bookData)
-      setOwner(ownerData || { id: bookData.owner_id })
+      setOwner(bookData.profiles)
+
+      // If book has a category, fetch category details
+      if (bookData.category_id) {
+        const { data: categoryData, error: categoryError } = await supabase
+          .from("categories")
+          .select("*")
+          .eq("id", bookData.category_id)
+          .single()
+
+        if (!categoryError && categoryData) {
+          setCategory(categoryData)
+        }
+      }
     } catch (err: any) {
       console.error("Error fetching book details:", err)
       setError(err.message || "Failed to load book details")
@@ -93,87 +78,29 @@ export default function SwapRequestPage() {
     }
   }
 
-  const fetchMyBooks = async () => {
-    if (!user) {
-      console.warn("fetchMyBooks called without a user.")
-      return
-    }
+  const fetchUserBooks = async () => {
+    if (!user) return
 
     try {
-      console.log(`fetchMyBooks: Fetching books for user ID: ${user.id}`)
-
-      // First, get ALL books for the user to see what we're working with
-      const { data: allUserBooks, error: queryError } = await supabase
+      const { data, error } = await supabase
         .from("books")
-        .select("id, title, author, cover_image, condition, listing_type, status, owner_id")
+        .select("*")
         .eq("owner_id", user.id)
+        .eq("status", "available")
+        .neq("id", bookId) // Exclude the current book
 
-      console.log("fetchMyBooks: ALL user books from database:", allUserBooks)
-
-      if (queryError) {
-        console.error("fetchMyBooks: Error querying user's books:", queryError)
-        setError(`Failed to load your books: ${queryError.message}`)
-        setMyBooks([])
+      if (error) {
+        console.error("Error fetching user books:", error)
         return
       }
 
-      if (!allUserBooks || allUserBooks.length === 0) {
-        console.log("fetchMyBooks: User has no books at all.")
-        setMyBooks([])
-        setError("You don't have any books listed yet. Please add a book first.")
-        return
-      }
-
-      // Now filter for exchangeable books in JavaScript (more reliable than Supabase filtering)
-      const exchangeableBooks = allUserBooks.filter((book) => {
-        const isAvailable = book.status?.toLowerCase() === "available"
-        const isExchangeable =
-          book.listing_type?.toLowerCase().includes("exchange") || book.listing_type?.toLowerCase().includes("swap")
-
-        console.log(
-          `Book "${book.title}": status="${book.status}", listing_type="${book.listing_type}", isAvailable=${isAvailable}, isExchangeable=${isExchangeable}`,
-        )
-
-        return isAvailable && isExchangeable
-      })
-
-      console.log(
-        `fetchMyBooks: Found ${exchangeableBooks.length} exchangeable books out of ${allUserBooks.length} total books`,
-      )
-
-      if (exchangeableBooks.length > 0) {
-        setMyBooks(exchangeableBooks)
-        // Clear any previous error about not having books
-        if (
-          error === "You don't have any books available for exchange. Please add a book first." ||
-          error === "You don't have any books listed yet. Please add a book first."
-        ) {
-          setError(null)
-        }
-      } else {
-        setMyBooks([])
-        // Only set this error if there's no other error from fetchBookDetails
-        if (!error || error === "You don't have any books listed yet. Please add a book first.") {
-          setError(
-            "You don't have any books available for exchange. Please add a book with listing type 'Exchange' or 'Swap' and status 'Available'.",
-          )
-        }
-      }
-    } catch (err: any) {
-      console.error("fetchMyBooks: Unexpected exception:", err)
-      setError("An unexpected error occurred while loading your books.")
-      setMyBooks([])
-      toast({
-        title: "Error Loading Books",
-        description: "An unexpected issue occurred while trying to load your books for exchange.",
-        variant: "destructive",
-      })
+      setUserBooks(data || [])
+    } catch (err) {
+      console.error("Error fetching user books:", err)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleSwapRequest = async () => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -183,10 +110,10 @@ export default function SwapRequestPage() {
       return
     }
 
-    if (!selectedBookId) {
+    if (!selectedBook) {
       toast({
-        title: "Book required",
-        description: "Please select a book to offer for swap",
+        title: "Book selection required",
+        description: "Please select a book to offer for the swap",
         variant: "destructive",
       })
       return
@@ -195,26 +122,36 @@ export default function SwapRequestPage() {
     setSubmitting(true)
 
     try {
-      const result = await requestBookSwap(user.id, bookId, selectedBookId, message)
+      // Create swap request
+      const { data, error } = await supabase
+        .from("swap_requests")
+        .insert({
+          requester_id: user.id,
+          owner_id: book.owner_id,
+          requested_book_id: bookId,
+          offered_book_id: selectedBook,
+          status: "pending",
+          message: `Swap request for "${book.title}"`,
+        })
+        .select()
+        .single()
 
-      if (result.success) {
-        toast({
-          title: "Swap Request Sent",
-          description: "Your swap request has been sent to the book owner",
-        })
-        router.push("/dashboard/swaps")
-      } else {
-        toast({
-          title: "Request Failed",
-          description: result.error || "Failed to send swap request",
-          variant: "destructive",
-        })
+      if (error) {
+        throw error
       }
-    } catch (err: any) {
-      console.error("Error requesting swap:", err)
+
       toast({
-        title: "Error",
-        description: "An unexpected error occurred",
+        title: "Swap Request Sent!",
+        description: "The book owner has been notified of your swap request.",
+      })
+
+      // Redirect to swaps page
+      router.push("/dashboard/swaps")
+    } catch (error: any) {
+      console.error("Error creating swap request:", error)
+      toast({
+        title: "Request Failed",
+        description: error.message || "An error occurred while sending your swap request.",
         variant: "destructive",
       })
     } finally {
@@ -222,15 +159,31 @@ export default function SwapRequestPage() {
     }
   }
 
+  const getOwnerName = () => {
+    if (owner?.full_name) return owner.full_name
+    if (owner?.username) return owner.username
+    return "Anonymous User"
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1 bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-          <div className="text-center p-8">
-            <h1 className="text-2xl font-bold mb-4">You must be logged in to request a swap</h1>
-            <Button onClick={() => router.push("/login")}>Log In</Button>
-          </div>
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader className="text-center">
+              <CardTitle>Authentication Required</CardTitle>
+              <CardDescription>Please sign in to request a book swap</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button asChild className="w-full">
+                <Link href="/login">Sign In</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full bg-transparent">
+                <Link href="/signup">Create Account</Link>
+              </Button>
+            </CardContent>
+          </Card>
         </main>
         <Footer />
       </div>
@@ -241,187 +194,235 @@ export default function SwapRequestPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-1 bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Button variant="ghost" size="sm" className="mb-6" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+        {/* Breadcrumb navigation */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="pl-0 h-8 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={() => router.push(`/books/${bookId}`)}
+          >
+            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Back to Book Details
           </Button>
+        </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-            <div className="p-6">
-              <h1 className="text-2xl font-bold mb-6 flex items-center">
-                <RefreshCw className="mr-2 h-5 w-5 text-emerald-600" /> Request Book Swap
-              </h1>
+        {/* Error message */}
+        {error && (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-4">
+            <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
 
-              {error ? (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6 flex items-start">
-                  <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium">Unable to proceed with swap</p>
-                    <p className="text-sm mt-1">{error}</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => router.push("/dashboard/books/add")}
-                    >
-                      Add a Book
-                    </Button>
+        {loading ? (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-3" />
+              <p className="text-gray-500 text-sm">Loading swap details...</p>
+            </div>
+          </div>
+        ) : book ? (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Book being requested */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="h-5 w-5 text-emerald-600" />
+                    Book You Want
+                  </CardTitle>
+                  <CardDescription>This is the book you're requesting to swap</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-4">
+                    <div className="w-24 h-32 flex-shrink-0">
+                      {book.cover_image ? (
+                        <Image
+                          src={book.cover_image || "/placeholder.svg"}
+                          alt={`Cover for ${book.title}`}
+                          width={96}
+                          height={128}
+                          className="w-full h-full object-cover rounded-md border"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-md border">
+                          <BookOpen className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <h3 className="font-semibold text-lg">{book.title}</h3>
+                      <p className="text-gray-600 dark:text-gray-300">By {book.author}</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {book.condition}
+                        </Badge>
+                        {category && (
+                          <Badge variant="outline" className="text-xs">
+                            {category.name}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <User className="h-4 w-4 mr-1" />
+                        <span>Owned by {getOwnerName()}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ) : loading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-3" />
-                  <p className="text-gray-500 text-sm">Loading book details...</p>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit}>
-                  <div className="space-y-8">
-                    {/* Book you want section */}
-                    <div>
-                      <h2 className="text-lg font-medium mb-4">Book You Want</h2>
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex gap-4">
-                            <div className="flex-shrink-0">
-                              {book.cover_image ? (
-                                <div className="relative w-24 h-36 overflow-hidden rounded-md border border-gray-200">
-                                  <Image
-                                    src={book.cover_image || "/placeholder.svg"}
-                                    alt={`Cover for ${book.title}`}
-                                    fill
-                                    className="object-cover"
-                                    sizes="96px"
-                                  />
-                                </div>
+                </CardContent>
+              </Card>
+
+              {/* User's books to offer */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <RefreshCw className="h-5 w-5 text-emerald-600" />
+                    Your Books to Offer
+                  </CardTitle>
+                  <CardDescription>Select a book from your collection to offer in exchange</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {userBooks.length === 0 ? (
+                    <div className="text-center py-8">
+                      <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <h3 className="text-lg font-medium mb-2">No Books Available</h3>
+                      <p className="text-gray-500 mb-4">You need to have books in your collection to request a swap.</p>
+                      <Button asChild>
+                        <Link href="/dashboard/books/add">Add a Book</Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {userBooks.map((userBook) => (
+                        <div
+                          key={userBook.id}
+                          className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                            selectedBook === userBook.id
+                              ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                          onClick={() => setSelectedBook(userBook.id)}
+                        >
+                          <div className="flex gap-3">
+                            <div className="w-16 h-20 flex-shrink-0">
+                              {userBook.cover_image ? (
+                                <Image
+                                  src={userBook.cover_image || "/placeholder.svg"}
+                                  alt={`Cover for ${userBook.title}`}
+                                  width={64}
+                                  height={80}
+                                  className="w-full h-full object-cover rounded border"
+                                />
                               ) : (
-                                <div className="flex w-24 h-36 flex-col items-center justify-center rounded-md border border-dashed border-gray-200 p-2">
-                                  <BookOpen className="h-8 w-8 text-gray-400" />
-                                  <p className="text-xs text-gray-500">No cover</p>
+                                <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded border">
+                                  <BookOpen className="h-6 w-6 text-gray-400" />
                                 </div>
                               )}
                             </div>
-                            <div>
-                              <h3 className="font-bold">{book.title}</h3>
-                              <p className="text-gray-600">By {book.author}</p>
-                              <div className="flex gap-2 mt-2">
-                                <Badge variant="outline">{book.condition}</Badge>
-                                <Badge variant="secondary">Exchange</Badge>
+                            <div className="flex-1">
+                              <h4 className="font-medium">{userBook.title}</h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">By {userBook.author}</p>
+                              <div className="flex gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {userBook.condition}
+                                </Badge>
                               </div>
-                              <p className="text-sm text-gray-500 mt-2">
-                                Owner: {owner?.full_name || owner?.username || "Anonymous"}
-                              </p>
                             </div>
+                            {selectedBook === userBook.id && (
+                              <div className="flex items-center">
+                                <Check className="h-5 w-5 text-emerald-600" />
+                              </div>
+                            )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Book you're offering section */}
-                    <div>
-                      <h2 className="text-lg font-medium mb-4">Book You're Offering</h2>
-                      {myBooks.length === 0 ? (
-                        <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-md">
-                          <p className="font-medium">You don't have any books available for exchange</p>
-                          <p className="text-sm mt-1">Add a book with listing type "Exchange" first.</p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-3"
-                            onClick={() => router.push("/dashboard/books/add")}
-                          >
-                            Add a Book
-                          </Button>
                         </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Swap request section */}
+            {userBooks.length > 0 && (
+              <Card className="mt-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-emerald-600" />
+                    Complete Your Swap Request
+                  </CardTitle>
+                  <CardDescription>Review your swap request and send it to the book owner</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {selectedBook && (
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <h4 className="font-medium mb-2">Swap Summary:</h4>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        <p>
+                          You're offering:{" "}
+                          <span className="font-medium">{userBooks.find((b) => b.id === selectedBook)?.title}</span>
+                        </p>
+                        <p>
+                          In exchange for: <span className="font-medium">{book.title}</span>
+                        </p>
+                        <p>
+                          Book owner: <span className="font-medium">{getOwnerName()}</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleSwapRequest}
+                      disabled={!selectedBook || submitting}
+                      className="flex-1"
+                      size="lg"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sending Request...
+                        </>
                       ) : (
-                        <RadioGroup
-                          value={selectedBookId || ""}
-                          onValueChange={setSelectedBookId}
-                          className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                        >
-                          {myBooks.map((book) => (
-                            <div key={book.id} className="relative">
-                              <RadioGroupItem value={book.id} id={book.id} className="peer sr-only" />
-                              <Label
-                                htmlFor={book.id}
-                                className="block cursor-pointer rounded-lg border-2 border-gray-200 p-4 hover:border-gray-300 peer-checked:border-emerald-500 peer-checked:ring-1 peer-checked:ring-emerald-500"
-                              >
-                                <div className="flex gap-4">
-                                  <div className="flex-shrink-0">
-                                    {book.cover_image ? (
-                                      <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200">
-                                        <Image
-                                          src={book.cover_image || "/placeholder.svg"}
-                                          alt={`Cover for ${book.title}`}
-                                          fill
-                                          className="object-cover"
-                                          sizes="64px"
-                                        />
-                                      </div>
-                                    ) : (
-                                      <div className="flex w-16 h-24 flex-col items-center justify-center rounded-md border border-dashed border-gray-200 p-1">
-                                        <BookOpen className="h-6 w-6 text-gray-400" />
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <h3 className="font-medium line-clamp-1">{book.title}</h3>
-                                    <p className="text-sm text-gray-600 line-clamp-1">By {book.author}</p>
-                                    <Badge variant="outline" className="mt-2 text-xs">
-                                      {book.condition}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <div className="absolute top-2 right-2 h-5 w-5 text-emerald-600 opacity-0 peer-checked:opacity-100">
-                                  <Check className="h-5 w-5" />
-                                </div>
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
+                        <>
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          Send Swap Request
+                        </>
                       )}
-                    </div>
-
-                    {/* Message section */}
-                    <div>
-                      <Label htmlFor="message" className="text-lg font-medium block mb-2">
-                        Message to Owner (Optional)
-                      </Label>
-                      <Textarea
-                        id="message"
-                        placeholder="Write a message to the book owner..."
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        className="min-h-[120px]"
-                      />
-                      <p className="text-sm text-gray-500 mt-2">
-                        Let the owner know why you're interested in swapping or any other details.
-                      </p>
-                    </div>
-
-                    {/* Submit button */}
-                    <div className="flex justify-end">
-                      <Button
-                        type="submit"
-                        disabled={submitting || myBooks.length === 0 || !selectedBookId}
-                        className="w-full md:w-auto"
-                      >
-                        {submitting ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending Request...
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4" /> Request Swap
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    </Button>
+                    <Button variant="outline" onClick={() => router.push(`/books/${bookId}`)} size="lg">
+                      Cancel
+                    </Button>
                   </div>
-                </form>
-              )}
+
+                  <div className="text-xs text-gray-500">
+                    <p>
+                      By sending this request, you agree to our{" "}
+                      <Link href="/terms" className="text-emerald-600 hover:underline">
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="/privacy" className="text-emerald-600 hover:underline">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+              <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+              <h2 className="text-xl font-medium mb-2">Book not found</h2>
+              <p className="text-gray-500 mb-4">The book you're looking for doesn't exist or has been removed.</p>
+              <Button onClick={() => router.push("/books")}>Browse Books</Button>
             </div>
           </div>
-        </div>
+        )}
       </main>
       <Footer />
     </div>

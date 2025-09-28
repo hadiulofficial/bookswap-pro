@@ -1,39 +1,15 @@
 import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
+import { GeistSans } from "geist/font/sans"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
+import "./globals.css"
 
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-})
+const defaultUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
 
-export const metadata: Metadata = {
-  title: "BookSwap - Share Books, Connect Readers",
-  description:
-    "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
-  keywords: "books, book exchange, book swap, buy books, sell books, donate books",
-  authors: [{ name: "BookSwap Team" }],
-  openGraph: {
-    title: "BookSwap - Share Books, Connect Readers",
-    description:
-      "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
-    type: "website",
-    locale: "en_US",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "BookSwap - Share Books, Connect Readers",
-    description:
-      "Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+export const metadata = {
+  metadataBase: new URL(defaultUrl),
+  title: "BookSwap - Buy, Sell, Donate & Exchange Books",
+  description: "The ultimate platform for book lovers to buy, sell, donate, and exchange books with fellow readers.",
     generator: 'v0.app'
 }
 
@@ -43,10 +19,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className={`${inter.className} antialiased`}>
+    <html lang="en" className={GeistSans.className}>
+      <body className="bg-background text-foreground">
         <AuthProvider>
-          {children}
+          <main className="min-h-screen flex flex-col">{children}</main>
           <Toaster />
         </AuthProvider>
       </body>
