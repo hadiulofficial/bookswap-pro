@@ -1,79 +1,58 @@
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, BookOpen, Users, Repeat } from "lucide-react"
-import Link from "next/link"
-import Image from "next/image"
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-emerald-50 py-20 sm:py-32">
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-      <div className="container relative">
-        <div className="mx-auto max-w-4xl text-center">
-          <div className="mb-8 flex justify-center">
-            <div className="relative rounded-full px-3 py-1 text-sm leading-6 text-emerald-600 ring-1 ring-emerald-600/20 hover:ring-emerald-600/30">
-              Join thousands of book lovers worldwide{" "}
-              <Link href="/signup" className="font-semibold text-emerald-600">
-                <span className="absolute inset-0" aria-hidden="true" />
-                Get started <ArrowRight className="inline h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-            Buy, Sell, Donate & Exchange <span className="text-emerald-600">Books</span> with Fellow Readers
+    <section className="relative bg-gradient-to-br from-emerald-50 to-teal-50 py-20 sm:py-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h1 className="text-4xl sm:text-6xl font-bold text-gray-900 mb-6">
+            Your Books Deserve a<span className="text-emerald-600 block">Second Chapter</span>
           </h1>
-          <p className="mt-6 text-lg leading-8 text-gray-600 max-w-2xl mx-auto">
-            The ultimate platform for book lovers. Discover new reads, find rare editions, and connect with a community
-            that shares your passion for books.
+          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            Join thousands of book lovers in buying, selling, donating, and exchanging books. Find your next great read
+            or give your books a new home.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Button size="lg" asChild className="bg-emerald-600 hover:bg-emerald-700">
-              <Link href="/signup">
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <Link href="/signup">
+              <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
                 Start Trading Books
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/books">Browse Books</Link>
-            </Button>
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link href="/books">
+              <Button size="lg" variant="outline">
+                Browse Books
+              </Button>
+            </Link>
           </div>
 
-          {/* Stats */}
-          <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="flex flex-col items-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100">
-                <BookOpen className="h-6 w-6 text-emerald-600" />
+              <div className="bg-emerald-100 p-4 rounded-full mb-4">
+                <BookOpen className="h-8 w-8 text-emerald-600" />
               </div>
-              <dt className="mt-4 text-base font-semibold text-gray-900">10,000+</dt>
-              <dd className="text-sm text-gray-600">Books Available</dd>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">50,000+ Books</h3>
+              <p className="text-gray-600 text-center">Discover a vast collection of books across all genres</p>
             </div>
-            <div className="flex flex-col items-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100">
-                <Users className="h-6 w-6 text-emerald-600" />
-              </div>
-              <dt className="mt-4 text-base font-semibold text-gray-900">5,000+</dt>
-              <dd className="text-sm text-gray-600">Active Users</dd>
-            </div>
-            <div className="flex flex-col items-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-100">
-                <Repeat className="h-6 w-6 text-emerald-600" />
-              </div>
-              <dt className="mt-4 text-base font-semibold text-gray-900">25,000+</dt>
-              <dd className="text-sm text-gray-600">Successful Exchanges</dd>
-            </div>
-          </div>
-        </div>
 
-        {/* Hero Image */}
-        <div className="mt-16 flow-root sm:mt-24">
-          <div className="relative -m-2 rounded-xl bg-gray-900/5 p-2 ring-1 ring-inset ring-gray-900/10 lg:-m-4 lg:rounded-2xl lg:p-4">
-            <Image
-              src="/colorful-bookshelf.png"
-              alt="BookSwap Platform"
-              width={1200}
-              height={600}
-              className="rounded-md shadow-2xl ring-1 ring-gray-900/10"
-              priority
-            />
+            <div className="flex flex-col items-center">
+              <div className="bg-emerald-100 p-4 rounded-full mb-4">
+                <Users className="h-8 w-8 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">10,000+ Users</h3>
+              <p className="text-gray-600 text-center">Connect with fellow book enthusiasts in your area</p>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="bg-emerald-100 p-4 rounded-full mb-4">
+                <Repeat className="h-8 w-8 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">25,000+ Swaps</h3>
+              <p className="text-gray-600 text-center">Books successfully traded between our community</p>
+            </div>
           </div>
         </div>
       </div>

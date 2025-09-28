@@ -1,73 +1,54 @@
-import { UserPlus, Search, MessageCircle, Handshake } from "lucide-react"
-import Image from "next/image"
-
-const steps = [
-  {
-    name: "Sign Up",
-    description: "Create your free account and set up your profile in minutes.",
-    icon: UserPlus,
-    image: "/online-registration.png",
-  },
-  {
-    name: "Browse & List",
-    description: "Search for books you want or list your own books for others to discover.",
-    icon: Search,
-    image: "/online-book-listing.png",
-  },
-  {
-    name: "Connect",
-    description: "Message other users to discuss details and arrange your book transaction.",
-    icon: MessageCircle,
-    image: "/book-exchange-park.png",
-  },
-  {
-    name: "Exchange",
-    description: "Complete your transaction safely and enjoy your new books!",
-    icon: Handshake,
-    image: "/thoughtful-reader.png",
-  },
-]
+import { Upload, Search, Users, CheckCircle } from "lucide-react"
 
 export function HowItWorksSection() {
+  const steps = [
+    {
+      icon: Upload,
+      title: "List Your Books",
+      description: "Upload photos and details of books you want to sell, donate, or swap.",
+    },
+    {
+      icon: Search,
+      title: "Discover Books",
+      description: "Browse through thousands of books or search for specific titles you want.",
+    },
+    {
+      icon: Users,
+      title: "Connect with Others",
+      description: "Message book owners to negotiate prices or arrange swaps and donations.",
+    },
+    {
+      icon: CheckCircle,
+      title: "Complete the Trade",
+      description: "Meet up locally or arrange shipping to complete your book transaction.",
+    },
+  ]
+
   return (
-    <section id="how-it-works" className="py-24 sm:py-32 bg-gray-50">
-      <div className="container">
-        <div className="mx-auto max-w-2xl lg:text-center">
-          <h2 className="text-base font-semibold leading-7 text-emerald-600">How It Works</h2>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            Start trading books in 4 simple steps
-          </p>
-          <p className="mt-6 text-lg leading-8 text-gray-600">
-            Getting started with BookSwap is easy. Follow these simple steps to begin your book trading journey.
+    <section className="py-20 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">How BookSwap Works</h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Getting started is simple. Follow these four easy steps to begin your book trading journey.
           </p>
         </div>
-        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-          <div className="grid max-w-xl grid-cols-1 gap-y-16 lg:max-w-none lg:grid-cols-2 lg:gap-x-8 lg:gap-y-16">
-            {steps.map((step, stepIdx) => (
-              <div key={step.name} className="flex flex-col lg:flex-row lg:items-center lg:gap-x-8">
-                <div className="flex-shrink-0">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-600">
-                    <step.icon className="h-8 w-8 text-white" aria-hidden="true" />
-                  </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {steps.map((step, index) => (
+            <div key={index} className="text-center">
+              <div className="relative mb-6">
+                <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <step.icon className="h-8 w-8 text-emerald-600" />
                 </div>
-                <div className="mt-6 lg:mt-0 lg:flex-1">
-                  <h3 className="text-lg font-semibold leading-8 text-gray-900">
-                    <span className="text-emerald-600">Step {stepIdx + 1}:</span> {step.name}
-                  </h3>
-                  <p className="mt-2 text-base leading-7 text-gray-600">{step.description}</p>
-                </div>
-                <div className="mt-6 lg:mt-0 lg:flex-shrink-0">
-                  <Image
-                    src={step.image || "/placeholder.svg"}
-                    alt={step.name}
-                    width={200}
-                    height={150}
-                    className="rounded-lg object-cover"
-                  />
+                <div className="absolute -top-2 -right-2 bg-emerald-600 text-white text-sm font-bold w-8 h-8 rounded-full flex items-center justify-center">
+                  {index + 1}
                 </div>
               </div>
-            ))}
-          </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">{step.title}</h3>
+              <p className="text-gray-600">{step.description}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

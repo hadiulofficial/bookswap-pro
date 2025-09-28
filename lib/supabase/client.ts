@@ -1,27 +1,14 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "./database.types"
 
-// Create a singleton instance of the Supabase client
-let supabaseClient: ReturnType<typeof createClient<Database>> | null = null
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export function createClientSupabaseClient() {
-  if (supabaseClient) return supabaseClient
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Missing Supabase environment variables")
-  }
-
-  supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  })
-
-  return supabaseClient
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Missing Supabase environment variables")
 }
 
-export const supabase = createClientSupabaseClient()
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+
+// Also export the createClient function for compatibility
+export { createClient }

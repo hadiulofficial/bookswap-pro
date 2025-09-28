@@ -3,96 +3,112 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, BookOpen } from "lucide-react"
-import { NavbarUserMenu } from "@/components/navbar-user-menu"
+import { Menu, X, BookOpen } from "lucide-react"
+import { NavbarUserMenu } from "./navbar-user-menu"
 import { useAuth } from "@/contexts/auth-context"
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const { user } = useAuth()
-
-  const navigation = [
-    { name: "Home", href: "/" },
-    { name: "Browse Books", href: "/books" },
-    { name: "How It Works", href: "#how-it-works" },
-    { name: "About", href: "#about" },
-    { name: "Contact", href: "/contact" },
-  ]
+  const { user, loading } = useAuth()
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
-        <div className="mr-4 hidden md:flex">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <BookOpen className="h-6 w-6 text-emerald-600" />
-            <span className="hidden font-bold sm:inline-block">BookSwap</span>
-          </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="transition-colors hover:text-foreground/80 text-foreground/60"
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
-            >
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="pr-0">
-            <Link href="/" className="flex items-center space-x-2" onClick={() => setIsOpen(false)}>
-              <BookOpen className="h-6 w-6 text-emerald-600" />
-              <span className="font-bold">BookSwap</span>
-            </Link>
-            <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-              <div className="flex flex-col space-y-3">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className="text-foreground/60 transition-colors hover:text-foreground"
-                  >
-                    {item.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none">
-            <Link href="/" className="flex items-center space-x-2 md:hidden">
-              <BookOpen className="h-6 w-6 text-emerald-600" />
-              <span className="font-bold">BookSwap</span>
+    <nav className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center space-x-2">
+              <BookOpen className="h-8 w-8 text-emerald-600" />
+              <span className="text-xl font-bold text-gray-900">BookSwap</span>
             </Link>
           </div>
-          <nav className="flex items-center space-x-2">
-            {user ? (
-              <NavbarUserMenu />
-            ) : (
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            <Link href="/books" className="text-gray-700 hover:text-emerald-600 transition-colors">
+              Browse Books
+            </Link>
+            <Link href="/blog" className="text-gray-700 hover:text-emerald-600 transition-colors">
+              Blog
+            </Link>
+            <Link href="/contact" className="text-gray-700 hover:text-emerald-600 transition-colors">
+              Contact
+            </Link>
+
+            {!loading && (
               <>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/login">Sign In</Link>
-                </Button>
-                <Button size="sm" asChild className="bg-emerald-600 hover:bg-emerald-700">
-                  <Link href="/signup">Get Started</Link>
-                </Button>
+                {user ? (
+                  <NavbarUserMenu />
+                ) : (
+                  <div className="flex items-center space-x-4">
+                    <Link href="/login">
+                      <Button variant="ghost">Sign In</Button>
+                    </Link>
+                    <Link href="/signup">
+                      <Button>Get Started</Button>
+                    </Link>
+                  </div>
+                )}
               </>
             )}
-          </nav>
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center">
+            <button onClick={() => setIsOpen(!isOpen)} className="text-gray-700 hover:text-emerald-600">
+              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {isOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+              <Link
+                href="/books"
+                className="block px-3 py-2 text-gray-700 hover:text-emerald-600"
+                onClick={() => setIsOpen(false)}
+              >
+                Browse Books
+              </Link>
+              <Link
+                href="/blog"
+                className="block px-3 py-2 text-gray-700 hover:text-emerald-600"
+                onClick={() => setIsOpen(false)}
+              >
+                Blog
+              </Link>
+              <Link
+                href="/contact"
+                className="block px-3 py-2 text-gray-700 hover:text-emerald-600"
+                onClick={() => setIsOpen(false)}
+              >
+                Contact
+              </Link>
+
+              {!loading && (
+                <>
+                  {user ? (
+                    <div className="px-3 py-2">
+                      <NavbarUserMenu />
+                    </div>
+                  ) : (
+                    <div className="px-3 py-2 space-y-2">
+                      <Link href="/login" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start">
+                          Sign In
+                        </Button>
+                      </Link>
+                      <Link href="/signup" onClick={() => setIsOpen(false)}>
+                        <Button className="w-full">Get Started</Button>
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   )

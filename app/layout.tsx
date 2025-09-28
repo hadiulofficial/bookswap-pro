@@ -1,15 +1,15 @@
 import type React from "react"
-import { GeistSans } from "geist/font/sans"
-import { AuthProvider } from "@/contexts/auth-context"
-import { Toaster } from "@/components/ui/toaster"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import "./globals.css"
+import { AuthProvider } from "@/contexts/auth-context"
 
-const defaultUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+const inter = Inter({ subsets: ["latin"] })
 
-export const metadata = {
-  metadataBase: new URL(defaultUrl),
+export const metadata: Metadata = {
   title: "BookSwap - Buy, Sell, Donate & Exchange Books",
-  description: "The ultimate platform for book lovers to buy, sell, donate, and exchange books with fellow readers.",
+  description:
+    "Join thousands of book lovers in buying, selling, donating, and exchanging books. Find your next great read or give your books a new home.",
     generator: 'v0.app'
 }
 
@@ -19,12 +19,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={GeistSans.className}>
-      <body className="bg-background text-foreground">
-        <AuthProvider>
-          <main className="min-h-screen flex flex-col">{children}</main>
-          <Toaster />
-        </AuthProvider>
+    <html lang="en">
+      <body className={inter.className}>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )
