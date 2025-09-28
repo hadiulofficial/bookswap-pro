@@ -1,108 +1,47 @@
-import { Suspense } from "react"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import { redirect, notFound } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
 import { EditBookForm } from "./edit-book-form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
 
-interface EditBookPageProps {
-  params: {
-    id: string
+async function getBook(id: string) {
+  const supabase = await createClient()
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      redirect("/login")
+    }
+
+    const { data: book, error } = await supabase.from("books").select("*").eq("id", id).eq("user_id", user.id).single()
+
+    if (error || !book) {
+      redirect("/dashboard/books")
+    }
+
+    return book
+  } catch (error) {
+    console.error("Error fetching book:", error)
+    redirect("/dashboard/books")
   }
 }
 
-export default async function EditBookPage({ params }: EditBookPageProps) {
-  const supabase = createServerComponentClient({ cookies })
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (!session) {
-    redirect("/login")
-  }
-
-  // Fetch book data
-  const { data: book, error: bookError } = await supabase
-    .from("books")
-    .select(`
-      *,
-      categories (
-        id,
-        name
-      )
-    `)
-    .eq("id", params.id)
-    .eq("user_id", session.user.id)
-    .single()
-
-  if (bookError || !book) {
-    console.error("Error fetching book:", bookError)
-    notFound()
-  }
-
-  // Fetch categories for the form
-  const { data: categories, error: categoriesError } = await supabase.from("categories").select("*").order("name")
-
-  if (categoriesError) {
-    console.error("Error fetching categories:", categoriesError)
-  }
+export default async function EditBookPage({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const book = await getBook(params.id)
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Edit Book</h1>
-        <p className="text-muted-foreground">Update your book details</p>
+        <h1 className="text-3xl font-bold">Edit Book</h1>
+        <p className="text-gray-600">Update your book listing</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Book Information</CardTitle>
-          <CardDescription>Update the details for "{book.title}"</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<EditBookFormSkeleton />}>
-            <EditBookForm book={book} categories={categories || []} />
-          </Suspense>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function EditBookFormSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-20 w-full" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      </div>
-      <Skeleton className="h-10 w-32" />
+      <EditBookForm book={book} />
     </div>
   )
 }
