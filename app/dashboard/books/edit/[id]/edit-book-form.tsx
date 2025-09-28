@@ -1,27 +1,44 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
+
+const bookSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  author: z.string().min(1, "Author is required"),
+  isbn: z.string().optional(),
+  category: z.string().min(1, "Category is required"),
+  condition: z.string().min(1, "Condition is required"),
+  description: z.string().optional(),
+  listing_type: z.enum(["sale", "swap", "donation"]),
+  price: z.string().optional(),
+  image_url: z.string().optional(),
+})
+
+type BookFormData = z.infer<typeof bookSchema>
 
 interface Book {
   id: string
   title: string
   author: string
-  description: string | null
-  price: number | null
+  isbn?: string
   category: string
+  condition: string
+  description?: string
   listing_type: "sale" | "swap" | "donation"
-  condition: string | null
-  image_url: string | null
+  price?: number
+  image_url?: string
 }
 
 interface EditBookFormProps {
@@ -29,33 +46,47 @@ interface EditBookFormProps {
 }
 
 export function EditBookForm({ book }: EditBookFormProps) {
-  const [formData, setFormData] = useState({
-    title: book.title,
-    author: book.author,
-    description: book.description || "",
-    price: book.price?.toString() || "",
-    category: book.category,
-    listing_type: book.listing_type,
-    condition: book.condition || "",
-    image_url: book.image_url || "",
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
   const router = useRouter()
   const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }))
-  }
+  const form = useForm<BookFormData>({
+    resolver: zodResolver(bookSchema),
+    defaultValues: {
+      title: book.title,
+      author: book.author,
+      isbn: book.isbn || "",
+      category: book.category,
+      condition: book.condition,
+      description: book.description || "",
+      listing_type: book.listing_type,
+      price: book.price?.toString() || "",
+      image_url: book.image_url || "",
+    },
+  })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+  const onSubmit = async (data: BookFormData) => {
+    setIsLoading(true)
 
     try {
+      console.log("Submitting book update:", {
+        id: book.id,
+        data: data,
+        listing_type: data.listing_type,
+      })
+
+      const updateData = {
+        title: data.title,
+        author: data.author,
+        isbn: data.isbn || null,
+        category: data.category,
+        condition: data.condition,
+        description: data.description || null,
+        listing_type: data.listing_type,
+        price: data.listing_type === "sale" && data.price ? Number.parseFloat(data.price) : null,
+        image_url: data.image_url || null,
+      }
+
       const response = await fetch("/api/books/update", {
         method: "PUT",
         headers: {
@@ -63,20 +94,14 @@ export function EditBookForm({ book }: EditBookFormProps) {
         },
         body: JSON.stringify({
           id: book.id,
-          title: formData.title,
-          author: formData.author,
-          description: formData.description || null,
-          price: formData.price ? Number.parseFloat(formData.price) : null,
-          category: formData.category,
-          listing_type: formData.listing_type,
-          condition: formData.condition || null,
-          image_url: formData.image_url || null,
+          ...updateData,
         }),
       })
 
+      const result = await response.json()
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to update book")
+        throw new Error(result.error || "Failed to update book")
       }
 
       toast({
@@ -94,133 +119,219 @@ export function EditBookForm({ book }: EditBookFormProps) {
         variant: "destructive",
       })
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false)
     }
   }
+
+  const categories = [
+    "Fiction",
+    "Non-Fiction",
+    "Mystery",
+    "Romance",
+    "Science Fiction",
+    "Fantasy",
+    "Biography",
+    "History",
+    "Self-Help",
+    "Business",
+    "Technology",
+    "Health",
+    "Travel",
+    "Cooking",
+    "Art",
+    "Religion",
+    "Philosophy",
+    "Poetry",
+    "Drama",
+    "Children",
+    "Young Adult",
+    "Educational",
+    "Reference",
+    "Other",
+  ]
+
+  const conditions = ["New", "Like New", "Very Good", "Good", "Acceptable", "Poor"]
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Book Details</CardTitle>
+        <CardTitle>Edit Book Details</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => handleChange("title", e.target.value)}
-                required
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Book title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="author"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Author *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Author name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="isbn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ISBN</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ISBN (optional)" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="condition"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Condition *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select condition" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {conditions.map((condition) => (
+                          <SelectItem key={condition} value={condition}>
+                            {condition}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="listing_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Listing Type *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select listing type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="sale">For Sale</SelectItem>
+                        <SelectItem value="swap">For Swap</SelectItem>
+                        <SelectItem value="donation">Donation</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="author">Author *</Label>
-              <Input
-                id="author"
-                value={formData.author}
-                onChange={(e) => handleChange("author", e.target.value)}
-                required
+            {form.watch("listing_type") === "sale" && (
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price ($)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="category">Category *</Label>
-              <Select value={formData.category} onValueChange={(value) => handleChange("category", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fiction">Fiction</SelectItem>
-                  <SelectItem value="non-fiction">Non-fiction</SelectItem>
-                  <SelectItem value="mystery">Mystery</SelectItem>
-                  <SelectItem value="romance">Romance</SelectItem>
-                  <SelectItem value="sci-fi">Sci-Fi</SelectItem>
-                  <SelectItem value="biography">Biography</SelectItem>
-                  <SelectItem value="history">History</SelectItem>
-                  <SelectItem value="self-help">Self-Help</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="listing_type">Listing Type *</Label>
-              <Select value={formData.listing_type} onValueChange={(value) => handleChange("listing_type", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select listing type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sale">For Sale</SelectItem>
-                  <SelectItem value="swap">For Swap</SelectItem>
-                  <SelectItem value="donation">Donation</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.listing_type === "sale" && (
-              <div className="space-y-2">
-                <Label htmlFor="price">Price ($)</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) => handleChange("price", e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="condition">Condition</Label>
-              <Select value={formData.condition} onValueChange={(value) => handleChange("condition", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select condition" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="like-new">Like New</SelectItem>
-                  <SelectItem value="very-good">Very Good</SelectItem>
-                  <SelectItem value="good">Good</SelectItem>
-                  <SelectItem value="acceptable">Acceptable</SelectItem>
-                </SelectContent>
-              </Select>
+            <FormField
+              control={form.control}
+              name="image_url"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Image URL</FormLabel>
+                  <FormControl>
+                    <Input placeholder="https://example.com/book-cover.jpg" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Book description (optional)" className="min-h-[100px]" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex gap-4">
+              <Button type="submit" disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Update Book
+              </Button>
+              <Button type="button" variant="outline" onClick={() => router.back()}>
+                Cancel
+              </Button>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleChange("description", e.target.value)}
-              placeholder="Tell readers about this book..."
-              rows={4}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="image_url">Image URL</Label>
-            <Input
-              id="image_url"
-              type="url"
-              value={formData.image_url}
-              onChange={(e) => handleChange("image_url", e.target.value)}
-              placeholder="https://example.com/book-cover.jpg"
-            />
-          </div>
-
-          <div className="flex gap-4">
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Updating..." : "Update Book"}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => router.push("/dashboard/books")}>
-              Cancel
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       </CardContent>
     </Card>
   )

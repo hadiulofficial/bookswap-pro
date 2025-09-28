@@ -7,105 +7,116 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Search, Edit, Trash2, Eye } from "lucide-react"
+import { Trash2, Edit, Search, Plus } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { createClient } from "@/lib/supabase/client"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useToast } from "@/hooks/use-toast"
 
 interface Book {
   id: string
   title: string
   author: string
-  description: string | null
-  price: number | null
   category: string
   listing_type: "sale" | "swap" | "donation"
-  condition: string | null
-  image_url: string | null
+  price?: number
+  condition: string
+  image_url?: string
   created_at: string
+  profiles?: {
+    full_name: string
+    avatar_url?: string
+  }
 }
 
 interface BooksPageClientProps {
-  initialBooks: Book[]
+  books: Book[]
   totalPages: number
   currentPage: number
+  categories: string[]
   initialSearch: string
   initialCategory: string
   initialListingType: string
 }
 
 export function BooksPageClient({
-  initialBooks,
+  books,
   totalPages,
   currentPage,
+  categories,
   initialSearch,
   initialCategory,
   initialListingType,
 }: BooksPageClientProps) {
-  const [books, setBooks] = useState<Book[]>(initialBooks)
-  const [search, setSearch] = useState(initialSearch)
-  const [category, setCategory] = useState(initialCategory)
-  const [listingType, setListingType] = useState(initialListingType)
-  const [isPending, startTransition] = useTransition()
-
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const [isPending, startTransition] = useTransition()
+  const [search, setSearch] = useState(initialSearch)
+  const [category, setCategory] = useState(initialCategory)
+  const [listingType, setListingType] = useState(initialListingType)
+  const supabase = createClientComponentClient()
 
-  const handleSearch = () => {
+  const updateFilters = () => {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (search) {
+      params.set("search", search)
+    } else {
+      params.delete("search")
+    }
+
+    if (category) {
+      params.set("category", category)
+    } else {
+      params.delete("category")
+    }
+
+    if (listingType) {
+      params.set("listing_type", listingType)
+    } else {
+      params.delete("listing_type")
+    }
+
+    params.delete("page") // Reset to first page when filtering
+
     startTransition(() => {
-      const params = new URLSearchParams(searchParams)
-
-      if (search) {
-        params.set("search", search)
-      } else {
-        params.delete("search")
-      }
-
-      if (category !== "all") {
-        params.set("category", category)
-      } else {
-        params.delete("category")
-      }
-
-      if (listingType !== "all") {
-        params.set("listing_type", listingType)
-      } else {
-        params.delete("listing_type")
-      }
-
-      params.delete("page") // Reset to first page when searching
-
       router.push(`/dashboard/books?${params.toString()}`)
     })
   }
 
-  const handlePageChange = (page: number) => {
+  const clearFilters = () => {
+    setSearch("")
+    setCategory("")
+    setListingType("")
     startTransition(() => {
-      const params = new URLSearchParams(searchParams)
-      params.set("page", page.toString())
+      router.push("/dashboard/books")
+    })
+  }
+
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("page", page.toString())
+
+    startTransition(() => {
       router.push(`/dashboard/books?${params.toString()}`)
     })
   }
 
   const handleDelete = async (bookId: string) => {
-    if (!confirm("Are you sure you want to delete this book?")) {
-      return
-    }
+    if (!confirm("Are you sure you want to delete this book?")) return
 
     try {
-      const supabase = createClient()
       const { error } = await supabase.from("books").delete().eq("id", bookId)
 
       if (error) throw error
 
-      setBooks(books.filter((book) => book.id !== bookId))
       toast({
         title: "Success",
         description: "Book deleted successfully",
       })
+
+      router.refresh()
     } catch (error) {
       console.error("Error deleting book:", error)
       toast({
@@ -116,65 +127,66 @@ export function BooksPageClient({
     }
   }
 
-  const getListingTypeBadge = (type: string) => {
+  const getListingTypeColor = (type: string) => {
     switch (type) {
       case "sale":
-        return <Badge variant="default">For Sale</Badge>
+        return "bg-green-100 text-green-800"
       case "swap":
-        return <Badge variant="secondary">For Swap</Badge>
+        return "bg-blue-100 text-blue-800"
       case "donation":
-        return <Badge variant="outline">Donation</Badge>
+        return "bg-purple-100 text-purple-800"
       default:
-        return <Badge variant="outline">{type}</Badge>
+        return "bg-gray-100 text-gray-800"
     }
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">My Books</h1>
-          <p className="text-gray-600">Manage your book listings</p>
-        </div>
-        <Button asChild>
-          <Link href="/dashboard/books/add">
+        <h1 className="text-3xl font-bold">My Books</h1>
+        <Link href="/dashboard/books/new">
+          <Button>
             <Plus className="h-4 w-4 mr-2" />
             Add Book
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </div>
 
-      {/* Search and Filters */}
+      {/* Filters */}
       <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+        <CardHeader>
+          <CardTitle>Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search books..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="pl-10"
+                onKeyDown={(e) => e.key === "Enter" && updateFilters()}
               />
             </div>
+
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger>
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="fiction">Fiction</SelectItem>
-                <SelectItem value="non-fiction">Non-fiction</SelectItem>
-                <SelectItem value="mystery">Mystery</SelectItem>
-                <SelectItem value="romance">Romance</SelectItem>
-                <SelectItem value="sci-fi">Sci-Fi</SelectItem>
-                <SelectItem value="biography">Biography</SelectItem>
-                <SelectItem value="history">History</SelectItem>
-                <SelectItem value="self-help">Self-Help</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+
             <Select value={listingType} onValueChange={setListingType}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Type" />
+              <SelectTrigger>
+                <SelectValue placeholder="Listing Type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
@@ -183,83 +195,64 @@ export function BooksPageClient({
                 <SelectItem value="donation">Donation</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={handleSearch} disabled={isPending}>
-              <Search className="h-4 w-4" />
-            </Button>
+
+            <div className="flex gap-2">
+              <Button onClick={updateFilters} disabled={isPending}>
+                Apply Filters
+              </Button>
+              <Button variant="outline" onClick={clearFilters}>
+                Clear
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Books Grid */}
-      {isPending ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-48 w-full" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-4 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2 mb-2" />
-                <Skeleton className="h-4 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : books.length === 0 ? (
+      {books.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center">
-            <h3 className="text-lg font-semibold mb-2">No books found</h3>
-            <p className="text-gray-600 mb-4">
-              {search || category !== "all" || listingType !== "all"
-                ? "Try adjusting your search filters"
-                : "You haven't added any books yet. Start by adding your first book!"}
-            </p>
-            <Button asChild>
-              <Link href="/dashboard/books/add">Add Your First Book</Link>
-            </Button>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-lg text-gray-500 mb-4">No books found</p>
+            <Link href="/dashboard/books/new">
+              <Button>Add Your First Book</Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {books.map((book) => (
             <Card key={book.id} className="overflow-hidden">
-              <div className="relative h-48">
-                {book.image_url ? (
-                  <Image src={book.image_url || "/placeholder.svg"} alt={book.title} fill className="object-cover" />
-                ) : (
-                  <div className="h-full bg-gray-200 flex items-center justify-center">
-                    <span className="text-gray-400">No Image</span>
-                  </div>
-                )}
+              <div className="aspect-[3/4] relative">
+                <Image
+                  src={book.image_url || "/placeholder.svg?height=300&width=200"}
+                  alt={book.title}
+                  fill
+                  className="object-cover"
+                />
               </div>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg line-clamp-1">{book.title}</CardTitle>
-                  {getListingTypeBadge(book.listing_type)}
+              <CardContent className="p-4">
+                <h3 className="font-semibold text-lg mb-1 line-clamp-2">{book.title}</h3>
+                <p className="text-gray-600 mb-2">by {book.author}</p>
+                <div className="flex items-center justify-between mb-3">
+                  <Badge className={getListingTypeColor(book.listing_type)}>{book.listing_type}</Badge>
+                  {book.listing_type === "sale" && book.price && (
+                    <span className="font-semibold text-green-600">${book.price}</span>
+                  )}
                 </div>
-                <p className="text-sm text-gray-600">by {book.author}</p>
-              </CardHeader>
-              <CardContent>
-                {book.description && <p className="text-sm text-gray-600 mb-3 line-clamp-2">{book.description}</p>}
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-sm text-gray-500">Category: {book.category}</span>
-                  {book.price && <span className="font-semibold text-green-600">${book.price}</span>}
-                </div>
+                <p className="text-sm text-gray-500 mb-3">Condition: {book.condition}</p>
                 <div className="flex gap-2">
-                  <Button asChild variant="outline" size="sm" className="flex-1 bg-transparent">
-                    <Link href={`/books/${book.id}`}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm" className="flex-1 bg-transparent">
-                    <Link href={`/dashboard/books/edit/${book.id}`}>
-                      <Edit className="h-4 w-4 mr-2" />
+                  <Link href={`/dashboard/books/edit/${book.id}`} className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full bg-transparent">
+                      <Edit className="h-4 w-4 mr-1" />
                       Edit
-                    </Link>
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(book.id)}>
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(book.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -271,7 +264,7 @@ export function BooksPageClient({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2">
+        <div className="flex justify-center items-center space-x-2">
           <Button
             variant="outline"
             onClick={() => handlePageChange(currentPage - 1)}
@@ -280,21 +273,19 @@ export function BooksPageClient({
             Previous
           </Button>
 
-          {[...Array(Math.min(5, totalPages))].map((_, i) => {
-            const page = Math.max(1, currentPage - 2) + i
-            if (page > totalPages) return null
-
-            return (
+          <div className="flex space-x-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
                 variant={page === currentPage ? "default" : "outline"}
+                size="sm"
                 onClick={() => handlePageChange(page)}
                 disabled={isPending}
               >
                 {page}
               </Button>
-            )
-          })}
+            ))}
+          </div>
 
           <Button
             variant="outline"

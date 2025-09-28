@@ -1,114 +1,103 @@
-import { createClient } from "@/lib/supabase/server"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createRouteHandlerClient({ cookies })
 
-    // Get the user
     const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (authError || !user) {
-      console.log("Auth error:", authError)
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await request.json()
-    console.log("Update request body:", body)
+    const { id, ...updateData } = body
 
-    const { id, title, author, description, price, category, listing_type, condition, image_url } = body
+    console.log("API: Updating book with ID:", id)
+    console.log("API: Update data:", updateData)
+    console.log("API: Listing type:", updateData.listing_type)
 
-    // Validate required fields
-    if (!id || !title || !author || !category || !listing_type) {
-      return NextResponse.json(
-        {
-          error: "Missing required fields: id, title, author, category, listing_type",
-        },
-        { status: 400 },
-      )
+    if (!id) {
+      return NextResponse.json({ error: "Book ID is required" }, { status: 400 })
     }
 
-    // Validate listing_type against expected values
+    // Validate listing_type
     const validListingTypes = ["sale", "swap", "donation"]
-    let listing_type_value = listing_type
-    if (!validListingTypes.includes(listing_type_value)) {
-      console.log(`Invalid listing_type: ${listing_type_value}. Defaulting to 'sale'`)
-      // Default to 'sale' if invalid
-      listing_type_value = "sale"
+    if (!validListingTypes.includes(updateData.listing_type)) {
+      console.log("API: Invalid listing type, defaulting to sale")
+      updateData.listing_type = "sale"
     }
 
-    // First, verify the book belongs to the user
-    const { data: existingBook, error: fetchError } = await supabase
-      .from("books")
-      .select("user_id")
-      .eq("id", id)
-      .single()
-
-    if (fetchError || !existingBook) {
-      console.log("Book fetch error:", fetchError)
-      return NextResponse.json({ error: "Book not found" }, { status: 404 })
-    }
-
-    if (existingBook.user_id !== user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
-    // Prepare update data
-    const updateData: any = {
-      title,
-      author,
-      description: description || null,
-      category,
-      listing_type: listing_type_value,
-      condition: condition || null,
-      image_url: image_url || null,
-      updated_at: new Date().toISOString(),
-    }
-
-    // Only include price for sale items
-    if (listing_type_value === "sale" && price !== null && price !== undefined && price !== "") {
-      updateData.price = Number.parseFloat(price.toString())
-    } else {
+    // Ensure price is null for non-sale items
+    if (updateData.listing_type !== "sale") {
       updateData.price = null
     }
 
-    console.log("Final update data:", updateData)
+    // First, verify the book exists and belongs to the user
+    const { data: existingBook, error: fetchError } = await supabase
+      .from("books")
+      .select("id, user_id")
+      .eq("id", id)
+      .eq("user_id", session.user.id)
+      .single()
+
+    if (fetchError || !existingBook) {
+      console.error("API: Book not found or access denied:", fetchError)
+      return NextResponse.json({ error: "Book not found or access denied" }, { status: 404 })
+    }
 
     // Update the book
-    const { data: updatedBook, error: updateError } = await supabase
+    const { data, error } = await supabase
       .from("books")
-      .update(updateData)
+      .update({
+        title: updateData.title,
+        author: updateData.author,
+        isbn: updateData.isbn,
+        category: updateData.category,
+        condition: updateData.condition,
+        description: updateData.description,
+        listing_type: updateData.listing_type,
+        price: updateData.price,
+        image_url: updateData.image_url,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", session.user.id)
       .select()
       .single()
 
-    if (updateError) {
-      console.error("Database update error:", updateError)
+    if (error) {
+      console.error("API: Database error:", error)
+
+      // Handle specific constraint violations
+      if (error.message.includes("books_listing_type_check")) {
+        return NextResponse.json(
+          {
+            error: "Invalid listing type. Please select Sale, Swap, or Donation.",
+          },
+          { status: 400 },
+        )
+      }
+
       return NextResponse.json(
         {
-          error: `Failed to update book: ${updateError.message}`,
-          details: updateError,
+          error: `Database error: ${error.message}`,
         },
         { status: 500 },
       )
     }
 
-    console.log("Book updated successfully:", updatedBook)
-
-    return NextResponse.json({
-      message: "Book updated successfully",
-      book: updatedBook,
-    })
+    console.log("API: Book updated successfully:", data)
+    return NextResponse.json({ success: true, data })
   } catch (error) {
-    console.error("Unexpected error in book update:", error)
+    console.error("API: Unexpected error:", error)
     return NextResponse.json(
       {
         error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     )
