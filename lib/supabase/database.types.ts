@@ -1,261 +1,192 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      profiles: {
-        Row: {
-          id: string
-          username: string | null
-          full_name: string | null
-          avatar_url: string | null
-          bio: string | null
-          location: string | null
-          website: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          username?: string | null
-          full_name?: string | null
-          avatar_url?: string | null
-          bio?: string | null
-          location?: string | null
-          website?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          username?: string | null
-          full_name?: string | null
-          avatar_url?: string | null
-          bio?: string | null
-          location?: string | null
-          website?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
       books: {
         Row: {
           id: string
           title: string
           author: string
-          description: string | null
           isbn: string | null
-          condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
-          cover_image: string | null
+          description: string | null
+          condition: string
           listing_type: string
           price: number | null
-          owner_id: string
-          category_id: number | null
-          status: string
+          image_url: string | null
+          user_id: string
           created_at: string
           updated_at: string
+          category_id: string | null
+          is_available: boolean
         }
         Insert: {
           id?: string
           title: string
           author: string
-          description?: string | null
           isbn?: string | null
-          condition: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
-          cover_image?: string | null
+          description?: string | null
+          condition: string
           listing_type: string
           price?: number | null
-          owner_id: string
-          category_id?: number | null
-          status?: string
+          image_url?: string | null
+          user_id: string
           created_at?: string
           updated_at?: string
+          category_id?: string | null
+          is_available?: boolean
         }
         Update: {
           id?: string
           title?: string
           author?: string
-          description?: string | null
           isbn?: string | null
-          condition?: "New" | "Like New" | "Very Good" | "Good" | "Acceptable"
-          cover_image?: string | null
+          description?: string | null
+          condition?: string
           listing_type?: string
           price?: number | null
-          owner_id?: string
-          category_id?: number | null
-          status?: string
+          image_url?: string | null
+          user_id?: string
           created_at?: string
           updated_at?: string
+          category_id?: string | null
+          is_available?: boolean
         }
+        Relationships: [
+          {
+            foreignKeyName: "books_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      categories: {
-        Row: {
-          id: number
-          name: string
-          slug: string
-          description: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: number
-          name: string
-          slug: string
-          description?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: number
-          name?: string
-          slug?: string
-          description?: string | null
-          created_at?: string
-        }
-      }
-      wishlists: {
+      profiles: {
         Row: {
           id: string
-          user_id: string
-          book_id: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          book_id: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          book_id?: string
-          created_at?: string
-        }
-      }
-      book_requests: {
-        Row: {
-          id: string
-          user_id: string
-          book_id: string
-          owner_id: string
-          message: string | null
-          status: "pending" | "approved" | "rejected"
+          email: string
+          full_name: string | null
+          avatar_url: string | null
+          location: string | null
+          bio: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          book_id: string
-          owner_id: string
-          message?: string | null
-          status?: "pending" | "approved" | "rejected"
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          book_id?: string
-          owner_id?: string
-          message?: string | null
-          status?: "pending" | "approved" | "rejected"
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      notifications: {
-        Row: {
           id: string
-          user_id: string
-          title: string
-          message: string
-          type: string
-          related_id: string | null
-          read: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          title: string
-          message: string
-          type: string
-          related_id?: string | null
-          read?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          message?: string
-          type?: string
-          related_id?: string | null
-          read?: boolean
-          created_at?: string
-        }
-      }
-      book_swaps: {
-        Row: {
-          id: string
-          requester_id: string
-          owner_id: string
-          requested_book_id: string
-          offered_book_id: string
-          message: string | null
-          status: "pending" | "approved" | "rejected"
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          requester_id: string
-          owner_id: string
-          requested_book_id: string
-          offered_book_id: string
-          message?: string | null
-          status?: "pending" | "approved" | "rejected"
+          email: string
+          full_name?: string | null
+          avatar_url?: string | null
+          location?: string | null
+          bio?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
-          requester_id?: string
-          owner_id?: string
-          requested_book_id?: string
-          offered_book_id?: string
-          message?: string | null
-          status?: "pending" | "approved" | "rejected"
+          email?: string
+          full_name?: string | null
+          avatar_url?: string | null
+          location?: string | null
+          bio?: string | null
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      testimonials: {
-        Row: {
-          id: string
-          user_id: string
-          content: string
-          rating: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          content: string
-          rating: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          content?: string
-          rating?: number
-          created_at?: string
-          updated_at?: string
-        }
-      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
+
+export type Tables<
+  PublicTableNameOrOptions extends
+    | keyof (Database["public"]["Tables"] & Database["public"]["Views"])
+    | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+        Database[PublicTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
+      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : PublicTableNameOrOptions extends keyof (Database["public"]["Tables"] & Database["public"]["Views"])
+    ? (Database["public"]["Tables"] & Database["public"]["Views"])[PublicTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  PublicTableNameOrOptions extends keyof Database["public"]["Tables"] | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  PublicTableNameOrOptions extends keyof Database["public"]["Tables"] | { schema: keyof Database },
+  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = PublicTableNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : PublicTableNameOrOptions extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][PublicTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  PublicEnumNameOrOptions extends keyof Database["public"]["Enums"] | { schema: keyof Database },
+  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
+    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = PublicEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : PublicEnumNameOrOptions extends keyof Database["public"]["Enums"]
+    ? Database["public"]["Enums"][PublicEnumNameOrOptions]
+    : never
