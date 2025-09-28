@@ -1,22 +1,22 @@
-import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { FeaturesSection } from "@/components/features-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
 import { TestimonialsSection } from "@/components/testimonials-section"
-import { TrustedBySection } from "@/components/trusted-by-section"
 import { CtaSection } from "@/components/cta-section"
 import { Footer } from "@/components/footer"
+import { Navbar } from "@/components/navbar"
+import { TrustedBySection } from "@/components/trusted-by-section"
 
-export default function HomePage() {
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen flex flex-col bg-[#f7f7f7] dark:bg-gray-950">
       <Navbar />
-      <main>
+      <main className="flex-1">
         <HeroSection />
+        <TrustedBySection />
         <FeaturesSection />
         <HowItWorksSection />
         <TestimonialsSection />
-        <TrustedBySection />
         <CtaSection />
       </main>
       <Footer />

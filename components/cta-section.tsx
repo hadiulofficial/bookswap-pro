@@ -1,57 +1,48 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 export function CtaSection() {
   return (
-    <section className="bg-gray-50">
-      <div className="mx-auto max-w-7xl py-24 sm:px-6 sm:py-32 lg:px-8">
-        <div className="relative isolate overflow-hidden bg-emerald-600 px-6 pt-16 shadow-2xl sm:rounded-3xl sm:px-16 md:pt-24 lg:flex lg:gap-x-20 lg:px-24 lg:pt-0">
-          <svg
-            viewBox="0 0 1024 1024"
-            className="absolute left-1/2 top-1/2 -z-10 h-[64rem] w-[64rem] -translate-y-1/2 [mask-image:radial-gradient(closest-side,white,transparent)] sm:left-full sm:-ml-80 lg:left-1/2 lg:ml-0 lg:-translate-x-1/2 lg:translate-y-0"
-            aria-hidden="true"
-          >
-            <circle cx={512} cy={512} r={512} fill="url(#759c1415-0410-454c-8f7c-9a820de03641)" fillOpacity="0.7" />
-            <defs>
-              <radialGradient id="759c1415-0410-454c-8f7c-9a820de03641">
-                <stop stopColor="#7775D6" />
-                <stop offset={1} stopColor="#E935C1" />
-              </radialGradient>
-            </defs>
-          </svg>
-          <div className="mx-auto max-w-md text-center lg:mx-0 lg:flex-auto lg:py-32 lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Ready to Start Trading Books?</h2>
-            <p className="mt-6 text-lg leading-8 text-emerald-100">
-              Join our community of book lovers today. List your first book, discover new reads, and connect with fellow
-              readers in your area.
+    <section className="py-16 md:py-24 bg-emerald-50 dark:bg-emerald-950/30">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center space-y-6 text-center">
+          <div className="space-y-3 max-w-[800px]">
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Ready to Start Swapping?</h2>
+            <p className="text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+              Join thousands of book lovers already using BookSwap to share their love of reading.
             </p>
-            <div className="mt-10 flex items-center justify-center gap-x-6 lg:justify-start">
-              <Link href="/signup">
-                <Button size="lg" className="bg-white text-emerald-600 hover:bg-gray-100">
-                  Get Started Now
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href="/books" className="text-sm font-semibold leading-6 text-white">
-                Browse Books <span aria-hidden="true">→</span>
-              </Link>
-            </div>
           </div>
-          <div className="relative mt-16 h-80 lg:mt-8">
-            <img
-              className="absolute left-0 top-0 w-[57rem] max-w-none rounded-md bg-white/5 ring-1 ring-white/10"
-              src="/colorful-bookshelf.png"
-              alt="BookSwap app screenshot"
-              width={1824}
-              height={1080}
-            />
+          <div className="w-full max-w-md space-y-3">
+            <form className="flex flex-col sm:flex-row gap-3">
+              <Input className="flex-1" placeholder="Enter your email" type="email" required />
+              <Button type="submit" className="sm:w-auto w-full">
+                Get Started
+              </Button>
+            </form>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              By signing up, you agree to our{" "}
+              <Link href="#" className="underline underline-offset-2 hover:text-emerald-600">
+                Terms & Conditions
+              </Link>
+            </p>
+          </div>
+        </div>
+        <div className="mt-16 grid grid-cols-1 gap-8 border-t pt-10 sm:grid-cols-3">
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="text-3xl font-bold">10,000+</div>
+            <p className="text-gray-500 dark:text-gray-400">Active Users</p>
+          </div>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="text-3xl font-bold">50,000+</div>
+            <p className="text-gray-500 dark:text-gray-400">Books Exchanged</p>
+          </div>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="text-3xl font-bold">1,000+</div>
+            <p className="text-gray-500 dark:text-gray-400">Book Clubs</p>
           </div>
         </div>
       </div>
     </section>
   )
 }
-
-// Also export as CTASection for compatibility
-export { CtaSection as CTASection }

@@ -1,55 +1,80 @@
-import { BookOpen, Users, Shield, Zap } from "lucide-react"
-
-const features = [
-  {
-    name: "Vast Book Collection",
-    description: "Access thousands of books across all genres, from bestsellers to rare finds.",
-    icon: BookOpen,
-  },
-  {
-    name: "Community Driven",
-    description: "Connect with fellow book lovers in your area and build lasting friendships.",
-    icon: Users,
-  },
-  {
-    name: "Safe & Secure",
-    description: "All transactions are protected with our secure messaging and rating system.",
-    icon: Shield,
-  },
-  {
-    name: "Instant Matching",
-    description: "Our smart algorithm helps you find the perfect books and trading partners quickly.",
-    icon: Zap,
-  },
-]
+import { BookOpen, Search, CreditCard, Star, Heart, ImageIcon, Lock, RefreshCw } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export function FeaturesSection() {
   return (
-    <section className="py-24 sm:py-32 bg-gray-50">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl lg:text-center">
-          <h2 className="text-base font-semibold leading-7 text-emerald-600">Everything you need</h2>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Why Choose BookSwap?</p>
-          <p className="mt-6 text-lg leading-8 text-gray-600">
-            We've built the most comprehensive platform for book lovers to connect, trade, and discover new reads.
-          </p>
+    <section id="features" className="py-16 md:py-24 bg-white dark:bg-gray-950">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center space-y-4 text-center mb-10 md:mb-16">
+          <div className="space-y-3 max-w-[800px]">
+            <div className="inline-block rounded-lg bg-emerald-100 px-3 py-1 text-sm text-emerald-700 dark:bg-emerald-800/30 dark:text-emerald-400">
+              Features
+            </div>
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              Everything You Need to Swap Books
+            </h2>
+            <p className="text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+              BookSwap provides all the tools you need to manage your book collection and connect with other readers.
+            </p>
+          </div>
         </div>
-        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
-          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-2 lg:gap-y-16">
-            {features.map((feature) => (
-              <div key={feature.name} className="relative pl-16">
-                <dt className="text-base font-semibold leading-7 text-gray-900">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600">
-                    <feature.icon className="h-6 w-6 text-white" aria-hidden="true" />
-                  </div>
-                  {feature.name}
-                </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-600">{feature.description}</dd>
-              </div>
-            ))}
-          </dl>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <FeatureCard
+            icon={<BookOpen className="h-10 w-10 text-emerald-600" />}
+            title="Book Listings"
+            description="Create, edit, and manage your book listings with ease."
+          />
+          <FeatureCard
+            icon={<Search className="h-10 w-10 text-emerald-600" />}
+            title="Advanced Search"
+            description="Find books by genre, author, location, and more."
+          />
+          <FeatureCard
+            icon={<CreditCard className="h-10 w-10 text-emerald-600" />}
+            title="Secure Payments"
+            description="Buy and sell books with our secure payment system."
+          />
+          <FeatureCard
+            icon={<Heart className="h-10 w-10 text-emerald-600" />}
+            title="Wishlist & Favorites"
+            description="Save books you're interested in for later."
+          />
+          <FeatureCard
+            icon={<Star className="h-10 w-10 text-emerald-600" />}
+            title="Reviews & Ratings"
+            description="Rate books and sellers to help the community."
+          />
+          <FeatureCard
+            icon={<ImageIcon className="h-10 w-10 text-emerald-600" />}
+            title="Image Uploads"
+            description="Upload book covers to make your listings stand out."
+          />
+          <FeatureCard
+            icon={<Lock className="h-10 w-10 text-emerald-600" />}
+            title="User Profiles"
+            description="Create your profile and build your reputation."
+          />
+          <FeatureCard
+            icon={<RefreshCw className="h-10 w-10 text-emerald-600" />}
+            title="Book Exchanges"
+            description="Exchange books with other readers in your area."
+          />
         </div>
       </div>
     </section>
+  )
+}
+
+function FeatureCard({ icon, title, description }) {
+  return (
+    <Card className="flex flex-col h-full">
+      <CardHeader className="pb-2">
+        <div className="p-2 mb-2">{icon}</div>
+        <CardTitle className="text-xl">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <CardDescription className="text-base">{description}</CardDescription>
+      </CardContent>
+    </Card>
   )
 }
