@@ -1,43 +1,42 @@
-import { Button } from "@/components/ui/button"
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 py-20 sm:py-32">
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-14 gap-y-16 sm:gap-y-20 lg:mx-0 lg:max-w-none lg:grid-cols-2 lg:items-center">
-          <div className="lg:pr-8 lg:pt-4">
-            <div className="lg:max-w-lg">
-              <h2 className="text-base font-semibold leading-7 text-emerald-600">BookSwap Community</h2>
-              <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-                Share Books, Convert Readers, And Connect
-              </p>
-              <p className="mt-6 text-lg leading-8 text-gray-600">
-                Join thousands of book lovers in our community. Buy, sell, donate, or swap books with fellow readers.
-                Discover your next favorite read while giving books a second life.
-              </p>
-              <div className="mt-10 flex items-center gap-x-6">
-                <Link href="/signup">
-                  <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
-                    Get started
-                  </Button>
-                </Link>
-                <Link href="/books" className="text-sm font-semibold leading-6 text-gray-900">
-                  Browse books <span aria-hidden="true">→</span>
-                </Link>
-              </div>
+    <section className="py-16 md:py-24 lg:py-32">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+          <div className="flex flex-col justify-center space-y-6">
+            <div className="inline-flex items-center rounded-full bg-emerald-100 px-4 py-1 text-sm font-medium text-emerald-700 dark:bg-emerald-800/30 dark:text-emerald-400 self-start">
+              <span className="w-2 h-2 mr-2 rounded-full bg-green-500"></span>
+              Find Your Next Read
+            </div>
+            <h1 className="text-5xl font-bold tracking-tighter sm:text-6xl xl:text-7xl/none">
+              Share Books, Convert Readers, And{" "}
+              <span className="inline-block bg-emerald-500 text-white px-2 rounded-md">Connect.</span>
+            </h1>
+            <p className="max-w-[600px] text-gray-600 md:text-xl dark:text-gray-400">
+              Buy, sell, donate, or exchange books with fellow readers. Join BookSwap and give your books a new life.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button size="lg" className="px-8 bg-black hover:bg-gray-800 text-white rounded-full">
+                <Link href="/books">View Books</Link>
+              </Button>
+              <Button size="lg" variant="outline" className="px-8 rounded-full bg-transparent">
+                <Link href="#features">Learn More</Link>
+              </Button>
             </div>
           </div>
-          <div className="flex items-start justify-end lg:order-first">
+          <div className="relative mx-auto lg:mx-0">
             <Image
               src="/colorful-bookshelf.png"
-              alt="Colorful bookshelf with various books"
               width={600}
-              height={400}
-              className="w-[48rem] max-w-none rounded-xl shadow-xl ring-1 ring-gray-400/10 sm:w-[57rem]"
-              priority
+              height={750}
+              alt="Colorful bookshelf with various books"
+              className="rounded-lg shadow-2xl"
             />
           </div>
         </div>
