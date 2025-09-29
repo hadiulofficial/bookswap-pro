@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -13,6 +13,45 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    // Check for error parameters in URL
+    const error = searchParams.get("error")
+    const message = searchParams.get("message")
+
+    if (error) {
+      let errorText = "An error occurred during authentication."
+
+      switch (error) {
+        case "oauth_error":
+          errorText = message ? decodeURIComponent(message) : "OAuth authentication failed."
+          break
+        case "exchange_error":
+          errorText = message ? decodeURIComponent(message) : "Failed to exchange authorization code."
+          break
+        case "no_code":
+          errorText = "No authorization code received from Google."
+          break
+        case "no_session":
+          errorText = "Failed to create session after authentication."
+          break
+        case "callback_exception":
+          errorText = message ? decodeURIComponent(message) : "An unexpected error occurred."
+          break
+        default:
+          errorText = message ? decodeURIComponent(message) : "Authentication failed."
+      }
+
+      setErrorMessage(errorText)
+
+      // Clear error from URL
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete("error")
+      newUrl.searchParams.delete("message")
+      window.history.replaceState({}, "", newUrl.toString())
+    }
+  }, [searchParams])
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
@@ -39,7 +78,6 @@ export default function LoginPage() {
         throw error
       }
 
-      // The redirect will happen automatically
       console.log("Google sign in initiated successfully")
     } catch (error: any) {
       console.error("Login error:", error)

@@ -1,31 +1,37 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { createClient } from "@supabase/supabase-js"
-import type { cookies } from "next/headers"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
 import type { Database } from "./database.types"
 
-// Function for use in server components
-export function createServerClient(cookieStore: ReturnType<typeof cookies>) {
-  return createServerComponentClient<Database>({ cookies: () => cookieStore })
-}
-
-// Enhanced function for server actions
 export function createServerSupabaseClient() {
-  // Create a direct client with service role for server actions
-  // This bypasses the need for cookies and session management
-  return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-    auth: {
-      persistSession: false,
-    },
-  })
-}
+  const cookieStore = cookies()
 
-// Create a singleton instance of the Supabase client for server-side usage
-export const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      persistSession: false,
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options) {
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch (error) {
+            // The `set` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+        remove(name: string, options) {
+          try {
+            cookieStore.set({ name, value: "", ...options })
+          } catch (error) {
+            // The `delete` method was called from a Server Component.
+            // This can be ignored if you have middleware refreshing
+            // user sessions.
+          }
+        },
+      },
     },
-  },
-)
+  )
+}

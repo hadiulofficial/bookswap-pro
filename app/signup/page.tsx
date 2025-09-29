@@ -9,7 +9,7 @@ import { Footer } from "@/components/footer"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { supabase } from "@/lib/supabase/client"
 
-export default function SignupPage() {
+export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
@@ -39,10 +39,9 @@ export default function SignupPage() {
         throw error
       }
 
-      // The redirect will happen automatically
       console.log("Google sign up initiated successfully")
     } catch (error: any) {
-      console.error("Signup error:", error)
+      console.error("Sign up error:", error)
       setErrorMessage(error.message || "Failed to sign up with Google. Please try again.")
       setIsLoading(false)
     }
@@ -57,7 +56,7 @@ export default function SignupPage() {
             <div className="space-y-2 max-w-[600px]">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Join BookSwap</h1>
               <p className="text-gray-500 md:text-xl dark:text-gray-400">
-                Create an account to start swapping books with readers around the world.
+                Create your account and start your book exchange journey today.
               </p>
             </div>
           </div>
@@ -95,7 +94,7 @@ export default function SignupPage() {
                         fill="#EA4335"
                       />
                     </svg>
-                    {isLoading ? "Signing up..." : "Sign up with Google"}
+                    {isLoading ? "Creating account..." : "Sign up with Google"}
                   </Button>
                 </div>
 
