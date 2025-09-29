@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
@@ -34,6 +33,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+
+  const clearAuthState = () => {
+    setUser(null)
+    setProfile(null)
+    setSession(null)
+    setIsLoading(false)
+  }
+
+  const clearAllStorage = () => {
+    try {
+      // Clear all Supabase related items from localStorage
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.includes("supabase") || key.includes("auth"))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach((key) => localStorage.removeItem(key))
+
+      // Clear sessionStorage as well
+      const sessionKeysToRemove = []
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && (key.includes("supabase") || key.includes("auth"))) {
+          sessionKeysToRemove.push(key)
+        }
+      }
+      sessionKeysToRemove.forEach((key) => sessionStorage.removeItem(key))
+    } catch (error) {
+      console.error("Error clearing storage:", error)
+    }
+  }
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -91,17 +123,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session)
-      setUser(session?.user || null)
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state change:", event, !!session)
 
-      if (session?.user) {
-        await fetchProfile(session.user.id)
+      if (event === "SIGNED_OUT" || !session) {
+        clearAuthState()
+        clearAllStorage()
       } else {
-        setProfile(null)
-      }
+        setSession(session)
+        setUser(session?.user || null)
 
-      setIsLoading(false)
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        } else {
+          setProfile(null)
+        }
+        setIsLoading(false)
+      }
     })
 
     return () => {
@@ -111,18 +149,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
-      setUser(null)
-      setProfile(null)
-      setSession(null)
+      console.log("Starting sign out process...")
+      setIsLoading(true)
 
-      // Clear any local storage items related to auth
-      localStorage.removeItem("supabase.auth.token")
+      // Clear state immediately for better UX
+      clearAuthState()
+      clearAllStorage()
 
-      // Redirect to login page after logout
-      router.push("/login")
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        console.error("Error signing out:", error)
+      } else {
+        console.log("Successfully signed out")
+      }
+
+      // Force a hard refresh to clear any cached state
+      window.location.href = "/login"
     } catch (error) {
-      console.error("Error signing out:", error)
+      console.error("Exception during sign out:", error)
+      // Even if there's an error, clear local state and redirect
+      clearAuthState()
+      clearAllStorage()
+      window.location.href = "/login"
     }
   }
 
