@@ -40,6 +40,70 @@ export default function SignupPage() {
     }
   }, [user, authLoading, router])
 
+  const validateMalaysianPhone = (phone: string): { isValid: boolean; formatted: string; error?: string } => {
+    // Remove all non-digits
+    const cleanPhone = phone.replace(/\D/g, "")
+
+    // Check if it starts with 60 (Malaysia country code)
+    if (cleanPhone.startsWith("60")) {
+      // Format: 60 + 9-11 digits
+      if (cleanPhone.length >= 11 && cleanPhone.length <= 13) {
+        return { isValid: true, formatted: `+${cleanPhone}` }
+      } else {
+        return {
+          isValid: false,
+          formatted: "",
+          error: "Malaysian phone number should be 9-11 digits after country code (+60)",
+        }
+      }
+    }
+
+    // Check if it starts with 0 (local Malaysian format)
+    if (cleanPhone.startsWith("0")) {
+      // Remove leading 0 and add country code
+      const withoutZero = cleanPhone.substring(1)
+      if (withoutZero.length >= 8 && withoutZero.length <= 10) {
+        return { isValid: true, formatted: `+60${withoutZero}` }
+      } else {
+        return {
+          isValid: false,
+          formatted: "",
+          error: "Malaysian phone number should be 8-10 digits after removing leading 0",
+        }
+      }
+    }
+
+    // Check if it's just the number without country code or leading 0
+    if (cleanPhone.length >= 8 && cleanPhone.length <= 10) {
+      return { isValid: true, formatted: `+60${cleanPhone}` }
+    }
+
+    return {
+      isValid: false,
+      formatted: "",
+      error: "Please enter a valid Malaysian phone number (e.g., 0123456789, 60123456789, or 123456789)",
+    }
+  }
+
+  const formatPhoneDisplay = (phone: string): string => {
+    const cleanPhone = phone.replace(/\D/g, "")
+
+    if (cleanPhone.startsWith("60")) {
+      const number = cleanPhone.substring(2)
+      if (number.length >= 8) {
+        return `+60 ${number.substring(0, 2)} ${number.substring(2, 5)} ${number.substring(5)}`
+      }
+    }
+
+    if (cleanPhone.startsWith("0")) {
+      if (cleanPhone.length >= 9) {
+        return `${cleanPhone.substring(0, 3)} ${cleanPhone.substring(3, 6)} ${cleanPhone.substring(6)}`
+      }
+    }
+
+    return phone
+  }
+
   const handleGoogleSignUp = async () => {
     if (isLoading) return
 
@@ -80,27 +144,29 @@ export default function SignupPage() {
     setSuccessMessage("")
 
     try {
-      // Validate phone number format
-      const cleanPhone = phoneNumber.replace(/\D/g, "")
-      if (cleanPhone.length < 10) {
-        throw new Error("Please enter a valid phone number")
+      const validation = validateMalaysianPhone(phoneNumber)
+
+      if (!validation.isValid) {
+        throw new Error(validation.error || "Invalid phone number format")
       }
 
-      // Format phone number with country code if not present
-      const formattedPhone = cleanPhone.startsWith("1") ? `+${cleanPhone}` : `+1${cleanPhone}`
-
-      console.log("Sending OTP to:", formattedPhone)
+      console.log("Sending OTP to:", validation.formatted)
 
       const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
+        phone: validation.formatted,
       })
 
       if (error) {
+        if (error.message.includes("Unsupported phone provider") || error.message.includes("SMS")) {
+          throw new Error(
+            "SMS service is not available for Malaysian numbers on the free tier. Please use Google sign-up or contact support.",
+          )
+        }
         throw error
       }
 
       setShowOtpInput(true)
-      setSuccessMessage("OTP sent to your phone number. Please check your messages.")
+      setSuccessMessage(`OTP sent to ${formatPhoneDisplay(phoneNumber)}. Please check your messages.`)
     } catch (error: any) {
       console.error("Phone sign up error:", error)
       setErrorMessage(error.message || "Failed to send OTP")
@@ -116,13 +182,16 @@ export default function SignupPage() {
     setErrorMessage("")
 
     try {
-      const cleanPhone = phoneNumber.replace(/\D/g, "")
-      const formattedPhone = cleanPhone.startsWith("1") ? `+${cleanPhone}` : `+1${cleanPhone}`
+      const validation = validateMalaysianPhone(phoneNumber)
 
-      console.log("Verifying OTP for:", formattedPhone)
+      if (!validation.isValid) {
+        throw new Error(validation.error || "Invalid phone number format")
+      }
+
+      console.log("Verifying OTP for:", validation.formatted)
 
       const { error } = await supabase.auth.verifyOtp({
-        phone: formattedPhone,
+        phone: validation.formatted,
         token: otp,
         type: "sms",
       })
@@ -185,7 +254,7 @@ export default function SignupPage() {
               <Tabs defaultValue="google" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="google">Google</TabsTrigger>
-                  <TabsTrigger value="phone">Phone</TabsTrigger>
+                  <TabsTrigger value="phone">Phone (MY)</TabsTrigger>
                 </TabsList>
 
                 <div className="mt-6 space-y-4">
@@ -233,16 +302,24 @@ export default function SignupPage() {
                     {!showOtpInput ? (
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="phone">Phone Number</Label>
+                          <Label htmlFor="phone">Malaysian Phone Number</Label>
                           <Input
                             id="phone"
                             type="tel"
-                            placeholder="(555) 123-4567"
+                            placeholder="0123456789 or 60123456789"
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
                             disabled={isLoading}
                           />
-                          <p className="text-xs text-gray-500">We'll send you a verification code via SMS</p>
+                          <p className="text-xs text-gray-500">
+                            Enter Malaysian number: 0123456789, 60123456789, or 123456789
+                          </p>
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                            <p className="text-xs text-yellow-800">
+                              <strong>Note:</strong> SMS service may not be available for Malaysian numbers on the free
+                              tier. We recommend using Google sign-up for the best experience.
+                            </p>
+                          </div>
                         </div>
                         <Button
                           onClick={handlePhoneSignUp}
@@ -265,7 +342,9 @@ export default function SignupPage() {
                             disabled={isLoading}
                             maxLength={6}
                           />
-                          <p className="text-xs text-gray-500">Enter the 6-digit code sent to {phoneNumber}</p>
+                          <p className="text-xs text-gray-500">
+                            Enter the 6-digit code sent to {formatPhoneDisplay(phoneNumber)}
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Button onClick={handleOtpVerification} disabled={isLoading || !otp} className="w-full py-6">

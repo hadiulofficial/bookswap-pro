@@ -1,4 +1,5 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
@@ -15,9 +16,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const supabase = createServerSupabaseClient()
-
     try {
+      const cookieStore = cookies()
+      const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
       console.log("Exchanging code for session...")
       const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
@@ -26,41 +28,23 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${requestUrl.origin}/login?error=${encodeURIComponent(exchangeError.message)}`)
       }
 
-      if (data.user) {
-        console.log("User authenticated:", data.user.id)
+      if (data.session) {
+        console.log("Session established successfully")
 
-        // Check if profile exists
+        // Check if user has a profile
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", data.user.id)
+          .eq("id", data.session.user.id)
           .single()
 
         if (profileError && profileError.code !== "PGRST116") {
           console.error("Error checking profile:", profileError)
         }
 
-        if (!profile) {
-          console.log("Creating profile for new user...")
-          // Create profile for new user
-          const { error: createProfileError } = await supabase.from("profiles").insert({
-            id: data.user.id,
-            full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name || null,
-            avatar_url: data.user.user_metadata?.avatar_url || null,
-            username: `user_${Math.floor(Math.random() * 1000000)}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+        console.log("Profile exists:", !!profile)
 
-          if (createProfileError) {
-            console.error("Error creating profile:", createProfileError)
-            // Don't fail the auth process, just log the error
-          } else {
-            console.log("Profile created successfully")
-          }
-        }
-
-        console.log("Redirecting to dashboard...")
+        // Redirect to dashboard with success parameter
         return NextResponse.redirect(`${requestUrl.origin}/dashboard?success=true`)
       }
     } catch (error) {
@@ -69,6 +53,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  console.log("No code provided, redirecting to login")
+  // No code parameter, redirect to login
+  console.log("No code parameter, redirecting to login")
   return NextResponse.redirect(`${requestUrl.origin}/login`)
 }
