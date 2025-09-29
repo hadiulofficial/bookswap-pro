@@ -9,7 +9,7 @@ import { Footer } from "@/components/footer"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { supabase } from "@/lib/supabase/client"
 
-export default function SignUpPage() {
+export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
@@ -19,30 +19,21 @@ export default function SignUpPage() {
     setErrorMessage("")
 
     try {
-      console.log("Starting Google sign up...")
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
         },
       })
 
-      console.log("Google sign up response:", { data, error })
-
       if (error) {
-        console.error("Google sign up error:", error)
         throw error
       }
 
-      console.log("Google sign up initiated successfully")
+      // No need to redirect here as Supabase will handle the redirect
     } catch (error: any) {
-      console.error("Sign up error:", error)
-      setErrorMessage(error.message || "Failed to sign up with Google. Please try again.")
+      console.error("Signup error:", error)
+      setErrorMessage(error.message || "Failed to sign up with Google")
       setIsLoading(false)
     }
   }
@@ -56,7 +47,7 @@ export default function SignUpPage() {
             <div className="space-y-2 max-w-[600px]">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Join BookSwap</h1>
               <p className="text-gray-500 md:text-xl dark:text-gray-400">
-                Create your account and start your book exchange journey today.
+                Create an account to start swapping books with readers around the world.
               </p>
             </div>
           </div>
@@ -74,7 +65,7 @@ export default function SignUpPage() {
                   <Button
                     onClick={handleGoogleSignUp}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 py-6 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
+                    className="w-full flex items-center justify-center gap-2 py-6"
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24">
                       <path
@@ -94,7 +85,7 @@ export default function SignUpPage() {
                         fill="#EA4335"
                       />
                     </svg>
-                    {isLoading ? "Creating account..." : "Sign up with Google"}
+                    {isLoading ? "Signing up..." : "Sign up with Google"}
                   </Button>
                 </div>
 

@@ -3,93 +3,105 @@
 import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import type { User, Session } from "@supabase/supabase-js"
-import { supabase, clearAuthData } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabase/client"
+import type { User, Session } from "@supabase/supabase-js"
+import type { Database } from "@/lib/supabase/database.types"
 
-interface AuthContextType {
+type Profile = Database["public"]["Tables"]["profiles"]["Row"]
+
+type AuthContextType = {
   user: User | null
+  profile: Profile | null
   session: Session | null
-  loading: boolean
+  isLoading: boolean
   signOut: () => Promise<void>
-  clearAuthState: () => void
+  refreshProfile: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  profile: null,
+  session: null,
+  isLoading: true,
+  signOut: async () => {},
+  refreshProfile: async () => {},
+})
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
-  const clearAuthState = () => {
-    setUser(null)
-    setSession(null)
-    clearAuthData()
+  const fetchProfile = async (userId: string) => {
+    try {
+      console.log("Fetching profile for user:", userId)
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
+
+      if (error) {
+        console.error("Error fetching profile:", error)
+        return null
+      }
+
+      console.log("Profile data:", data)
+      setProfile(data)
+      return data
+    } catch (error) {
+      console.error("Exception fetching profile:", error)
+      return null
+    }
   }
 
-  const signOut = async () => {
-    try {
-      // Clear state immediately for better UX
-      clearAuthState()
-
-      // Sign out from Supabase
-      await supabase.auth.signOut()
-
-      // Hard redirect to login page
-      window.location.href = "/login"
-    } catch (error) {
-      console.error("Error signing out:", error)
-      // Even if sign out fails, clear local state and redirect
-      clearAuthState()
-      window.location.href = "/login"
+  const refreshProfile = async () => {
+    if (user) {
+      return await fetchProfile(user.id)
     }
+    return null
   }
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    const fetchSession = async () => {
       try {
         const {
           data: { session },
-          error,
         } = await supabase.auth.getSession()
 
-        if (error) {
-          console.error("Error getting session:", error)
-          clearAuthState()
+        console.log("Auth context: Session fetched", !!session)
+
+        setSession(session)
+        setUser(session?.user || null)
+
+        if (session?.user) {
+          await fetchProfile(session.user.id)
         } else {
-          setSession(session)
-          setUser(session?.user ?? null)
+          setProfile(null)
+          console.log("Auth context: No user in session")
         }
+
+        setIsLoading(false)
       } catch (error) {
-        console.error("Exception getting session:", error)
-        clearAuthState()
-      } finally {
-        setLoading(false)
+        console.error("Error fetching session:", error)
+        setIsLoading(false)
       }
     }
 
-    getInitialSession()
+    fetchSession()
 
-    // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.email)
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session)
+      setUser(session?.user || null)
 
-      if (event === "SIGNED_IN" && session) {
-        setSession(session)
-        setUser(session.user)
-      } else if (event === "SIGNED_OUT" || !session) {
-        clearAuthState()
-      } else if (event === "TOKEN_REFRESHED" && session) {
-        setSession(session)
-        setUser(session.user)
+      if (session?.user) {
+        await fetchProfile(session.user.id)
+      } else {
+        setProfile(null)
       }
 
-      setLoading(false)
+      setIsLoading(false)
     })
 
     return () => {
@@ -97,15 +109,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut()
+      setUser(null)
+      setProfile(null)
+      setSession(null)
+
+      // Clear any local storage items related to auth
+      localStorage.removeItem("supabase.auth.token")
+
+      // Redirect to login page after logout
+      router.push("/login")
+    } catch (error) {
+      console.error("Error signing out:", error)
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut, clearAuthState }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, profile, session, isLoading, signOut, refreshProfile }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
-}
+export const useAuth = () => useContext(AuthContext)

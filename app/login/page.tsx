@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -13,75 +13,27 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    // Check for error parameters in URL
-    const error = searchParams.get("error")
-    const message = searchParams.get("message")
-
-    if (error) {
-      let errorText = "An error occurred during authentication."
-
-      switch (error) {
-        case "oauth_error":
-          errorText = message ? decodeURIComponent(message) : "OAuth authentication failed."
-          break
-        case "exchange_error":
-          errorText = message ? decodeURIComponent(message) : "Failed to exchange authorization code."
-          break
-        case "no_code":
-          errorText = "No authorization code received from Google."
-          break
-        case "no_session":
-          errorText = "Failed to create session after authentication."
-          break
-        case "callback_exception":
-          errorText = message ? decodeURIComponent(message) : "An unexpected error occurred."
-          break
-        default:
-          errorText = message ? decodeURIComponent(message) : "Authentication failed."
-      }
-
-      setErrorMessage(errorText)
-
-      // Clear error from URL
-      const newUrl = new URL(window.location.href)
-      newUrl.searchParams.delete("error")
-      newUrl.searchParams.delete("message")
-      window.history.replaceState({}, "", newUrl.toString())
-    }
-  }, [searchParams])
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     setErrorMessage("")
 
     try {
-      console.log("Starting Google sign in...")
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
         },
       })
 
-      console.log("Google sign in response:", { data, error })
-
       if (error) {
-        console.error("Google sign in error:", error)
         throw error
       }
 
-      console.log("Google sign in initiated successfully")
+      // No need to redirect here as Supabase will handle the redirect to the callback URL
     } catch (error: any) {
       console.error("Login error:", error)
-      setErrorMessage(error.message || "Failed to sign in with Google. Please try again.")
+      setErrorMessage(error.message || "Failed to sign in with Google")
       setIsLoading(false)
     }
   }
@@ -113,7 +65,7 @@ export default function LoginPage() {
                   <Button
                     onClick={handleGoogleSignIn}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 py-6 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
+                    className="w-full flex items-center justify-center gap-2 py-6"
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24">
                       <path
@@ -135,17 +87,6 @@ export default function LoginPage() {
                     </svg>
                     {isLoading ? "Signing in..." : "Sign in with Google"}
                   </Button>
-                </div>
-
-                <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-                  By signing in, you agree to our{" "}
-                  <Link href="/terms" className="text-emerald-600 hover:underline">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/privacy" className="text-emerald-600 hover:underline">
-                    Privacy Policy
-                  </Link>
                 </div>
               </div>
             </div>
