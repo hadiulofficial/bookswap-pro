@@ -42,7 +42,7 @@ export const clearAuthData = () => {
         sessionKeysToRemove.push(key)
       }
     }
-    sessionKeysToRemove.forEach((key) => sessionStorage.removeItem(key))
+    sessionKeysToRemove.forEach((key) => sessionStorage.removeRemove(key))
 
     console.log("Cleared all auth data from storage")
   } catch (error) {

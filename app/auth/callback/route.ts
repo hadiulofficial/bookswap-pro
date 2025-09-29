@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import type { Database } from "@/lib/supabase/database.types"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -29,17 +28,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Create a new Supabase client for the server-side callback
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      },
-    )
+    const supabase = createServerSupabaseClient()
 
     console.log("Exchanging code for session...")
     const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
@@ -92,24 +81,7 @@ export async function GET(request: Request) {
     }
 
     // Successful authentication - redirect to dashboard
-    const response = NextResponse.redirect(new URL("/dashboard", requestUrl.origin))
-
-    // Set cookies for the session
-    response.cookies.set("sb-access-token", data.session.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    })
-
-    response.cookies.set("sb-refresh-token", data.session.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-    })
-
-    return response
+    return NextResponse.redirect(new URL("/dashboard", requestUrl.origin))
   } catch (error) {
     console.error("Exception in auth callback:", error)
     return NextResponse.redirect(
