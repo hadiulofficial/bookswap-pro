@@ -28,6 +28,8 @@ import {
   ChevronRightIcon,
   MoreHorizontal,
   Check,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
@@ -79,11 +81,16 @@ export default function PublicBooksPage() {
     [currentPage, itemsPerPage],
   )
 
-  // Fetch books from API
+  // Fetch books from API with timeout
   const fetchBooks = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
+
+      // Set a timeout for the request
+      const timeoutPromise = new Promise(
+        (_, reject) => setTimeout(() => reject(new Error("Request timeout")), 10000), // 10 second timeout
+      )
 
       let query = supabase
         .from("books")
@@ -103,7 +110,10 @@ export default function PublicBooksPage() {
         query = query.eq("condition", condition)
       }
 
-      const { data, error } = await query.order("created_at", { ascending: false })
+      const queryPromise = query.order("created_at", { ascending: false })
+
+      // Race between the query and timeout
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise])
 
       if (error) {
         throw error
@@ -113,7 +123,11 @@ export default function PublicBooksPage() {
       updatePagination(data || [])
     } catch (err: any) {
       console.error("Error fetching books:", err)
-      setError(err.message || "Failed to load books")
+      if (err.message === "Request timeout") {
+        setError("Connection timeout. Please check your internet connection and try again.")
+      } else {
+        setError(err.message || "Failed to load books")
+      }
       setAllBooks([])
       setBooks([])
     } finally {
@@ -304,7 +318,7 @@ export default function PublicBooksPage() {
     // Ellipsis or second page
     if (currentPage > 3) {
       buttons.push(
-        <Button key="ellipsis1" variant="outline" size="icon" className="h-9 w-9" disabled>
+        <Button key="ellipsis1" variant="outline" size="icon" className="h-9 w-9 bg-transparent" disabled>
           <MoreHorizontal className="h-4 w-4" />
         </Button>,
       )
@@ -340,7 +354,7 @@ export default function PublicBooksPage() {
     // Ellipsis or second-to-last page
     if (currentPage < totalPages - 2) {
       buttons.push(
-        <Button key="ellipsis2" variant="outline" size="icon" className="h-9 w-9" disabled>
+        <Button key="ellipsis2" variant="outline" size="icon" className="h-9 w-9 bg-transparent" disabled>
           <MoreHorizontal className="h-4 w-4" />
         </Button>,
       )
@@ -454,7 +468,7 @@ export default function PublicBooksPage() {
           <div className="md:hidden mb-6">
             <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full bg-transparent">
                   <SlidersHorizontal className="mr-2 h-4 w-4" /> Filters
                 </Button>
               </SheetTrigger>
@@ -518,25 +532,77 @@ export default function PublicBooksPage() {
 
             {/* Main content area */}
             <div className="flex-1">
-              {/* Error message */}
+              {/* Error message with better UI */}
               {error && (
-                <div className="bg-red-50 text-red-500 p-4 rounded-md mb-8">
-                  <p>{error}</p>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-8 mb-8">
+                  <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
+                      <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Unable to Load Books</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">{error}</p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button onClick={fetchBooks} className="flex items-center">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Try Again
+                      </Button>
+                      <Button variant="outline" onClick={resetFilters}>
+                        Reset Filters
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Loading state */}
+              {/* Loading state with timeout indicator */}
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                  <Loader2 className="h-8 w-8 animate-spin text-emerald-600 mb-4" />
-                  <p className="text-gray-500">Loading books...</p>
+                <div className="flex flex-col items-center justify-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                  <div className="relative">
+                    <Loader2 className="h-12 w-12 animate-spin text-emerald-600 mb-4" />
+                    <div className="absolute inset-0 rounded-full border-2 border-emerald-200 dark:border-emerald-800"></div>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Loading Books...</h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
+                    We're fetching the latest available books for you. This should only take a moment.
+                  </p>
+                  <div className="mt-4 text-xs text-gray-400">
+                    If this takes too long, please check your internet connection
+                  </div>
                 </div>
-              ) : allBooks.length === 0 ? (
-                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-                  <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h2 className="text-xl font-medium mb-2">No books found</h2>
-                  <p className="text-gray-500 mb-4">Try adjusting your filters or check back later</p>
-                  <Button onClick={resetFilters}>Reset Filters</Button>
+              ) : !error && allBooks.length === 0 ? (
+                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                  <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-6">
+                    <BookOpen className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">No Books Available</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                    {searchQuery || listingType || condition
+                      ? "No books match your current filters. Try adjusting your search criteria."
+                      : "There are currently no books available. Be the first to list a book!"}
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    {searchQuery || listingType || condition ? (
+                      <Button onClick={resetFilters} variant="outline">
+                        <X className="mr-2 h-4 w-4" />
+                        Clear Filters
+                      </Button>
+                    ) : null}
+                    {user ? (
+                      <Button asChild>
+                        <Link href="/dashboard/books/new">
+                          <BookOpen className="mr-2 h-4 w-4" />
+                          List Your First Book
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button asChild>
+                        <Link href="/signup">
+                          <BookOpen className="mr-2 h-4 w-4" />
+                          Join BookSwap
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <>
@@ -648,7 +714,7 @@ export default function PublicBooksPage() {
                         </CardContent>
                         <CardFooter className="pt-0">
                           {book.status === "reserved" && book.listing_type === "Donate" ? (
-                            <Button variant="outline" className="w-full justify-between" disabled>
+                            <Button variant="outline" className="w-full justify-between bg-transparent" disabled>
                               Already Donated <Check className="h-4 w-4 ml-2 text-green-500" />
                             </Button>
                           ) : (
