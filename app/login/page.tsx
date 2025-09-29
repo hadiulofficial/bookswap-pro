@@ -19,21 +19,31 @@ export default function LoginPage() {
     setErrorMessage("")
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log("Starting Google sign in...")
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       })
 
+      console.log("Google sign in response:", { data, error })
+
       if (error) {
+        console.error("Google sign in error:", error)
         throw error
       }
 
-      // No need to redirect here as Supabase will handle the redirect to the callback URL
+      // The redirect will happen automatically
+      console.log("Google sign in initiated successfully")
     } catch (error: any) {
       console.error("Login error:", error)
-      setErrorMessage(error.message || "Failed to sign in with Google")
+      setErrorMessage(error.message || "Failed to sign in with Google. Please try again.")
       setIsLoading(false)
     }
   }
@@ -65,7 +75,7 @@ export default function LoginPage() {
                   <Button
                     onClick={handleGoogleSignIn}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 py-6"
+                    className="w-full flex items-center justify-center gap-2 py-6 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24">
                       <path
@@ -87,6 +97,17 @@ export default function LoginPage() {
                     </svg>
                     {isLoading ? "Signing in..." : "Sign in with Google"}
                   </Button>
+                </div>
+
+                <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                  By signing in, you agree to our{" "}
+                  <Link href="/terms" className="text-emerald-600 hover:underline">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/privacy" className="text-emerald-600 hover:underline">
+                    Privacy Policy
+                  </Link>
                 </div>
               </div>
             </div>

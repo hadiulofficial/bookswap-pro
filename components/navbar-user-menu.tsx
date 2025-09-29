@@ -1,6 +1,7 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useState } from "react"
+import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,82 +13,101 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User, LogOut, Settings, BookOpen, LayoutDashboard } from "lucide-react"
-import { useState } from "react"
+import { User, Settings, BookOpen, Heart, MessageSquare, Bell, LogOut, Loader2 } from "lucide-react"
 
 export function NavbarUserMenu() {
-  const { user, profile, signOut, isLoading } = useAuth()
-  const router = useRouter()
+  const { user, profile, signOut } = useAuth()
   const [isSigningOut, setIsSigningOut] = useState(false)
 
   const handleSignOut = async () => {
-    if (isSigningOut) return // Prevent multiple clicks
-
+    setIsSigningOut(true)
     try {
-      setIsSigningOut(true)
-      console.log("User menu: Starting sign out...")
       await signOut()
     } catch (error) {
-      console.error("Error in handleSignOut:", error)
-      // Force redirect even if there's an error
-      window.location.href = "/login"
-    } finally {
+      console.error("Error signing out:", error)
       setIsSigningOut(false)
     }
   }
 
-  // Don't render if loading or no user
-  if (isLoading || !user) {
-    return null
+  if (!user) {
+    return (
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" asChild>
+          <Link href="/login">Sign In</Link>
+        </Button>
+        <Button asChild>
+          <Link href="/signup">Sign Up</Link>
+        </Button>
+      </div>
+    )
   }
 
-  const displayName = profile?.full_name || profile?.username || "User"
-  const initials =
-    profile?.full_name
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("") ||
-    user.email?.charAt(0).toUpperCase() ||
-    "U"
+  const displayName = profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User"
+  const avatarUrl = profile?.avatar_url || user.user_metadata?.avatar_url
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full" disabled={isSigningOut}>
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={profile?.avatar_url || ""} alt={displayName} />
-            <AvatarFallback className="text-sm bg-emerald-100 text-emerald-800">{initials}</AvatarFallback>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={displayName} />
+            <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel>
+        <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{displayName}</p>
-            <p className="text-xs leading-none text-gray-500">{user.email}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push("/dashboard")} disabled={isSigningOut}>
-          <LayoutDashboard className="mr-2 h-4 w-4" />
-          Dashboard
+        <DropdownMenuItem asChild disabled={isSigningOut}>
+          <Link href="/dashboard" className="flex items-center">
+            <User className="mr-2 h-4 w-4" />
+            <span>Dashboard</span>
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/dashboard/profile")} disabled={isSigningOut}>
-          <User className="mr-2 h-4 w-4" />
-          Profile
+        <DropdownMenuItem asChild disabled={isSigningOut}>
+          <Link href="/dashboard/books" className="flex items-center">
+            <BookOpen className="mr-2 h-4 w-4" />
+            <span>My Books</span>
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/dashboard/books")} disabled={isSigningOut}>
-          <BookOpen className="mr-2 h-4 w-4" />
-          My Books
+        <DropdownMenuItem asChild disabled={isSigningOut}>
+          <Link href="/dashboard/wishlist" className="flex items-center">
+            <Heart className="mr-2 h-4 w-4" />
+            <span>Wishlist</span>
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/dashboard/settings")} disabled={isSigningOut}>
-          <Settings className="mr-2 h-4 w-4" />
-          Settings
+        <DropdownMenuItem asChild disabled={isSigningOut}>
+          <Link href="/dashboard/messages" className="flex items-center">
+            <MessageSquare className="mr-2 h-4 w-4" />
+            <span>Messages</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild disabled={isSigningOut}>
+          <Link href="/dashboard/notifications" className="flex items-center">
+            <Bell className="mr-2 h-4 w-4" />
+            <span>Notifications</span>
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} disabled={isSigningOut} className="text-red-600 focus:text-red-600">
-          <LogOut className="mr-2 h-4 w-4" />
-          {isSigningOut ? "Signing out..." : "Sign out"}
+        <DropdownMenuItem asChild disabled={isSigningOut}>
+          <Link href="/dashboard/settings" className="flex items-center">
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-red-600 focus:text-red-600 focus:bg-red-50"
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+        >
+          {isSigningOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+          <span>{isSigningOut ? "Signing out..." : "Sign out"}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

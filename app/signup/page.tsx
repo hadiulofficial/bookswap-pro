@@ -19,21 +19,31 @@ export default function SignupPage() {
     setErrorMessage("")
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log("Starting Google sign up...")
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       })
 
+      console.log("Google sign up response:", { data, error })
+
       if (error) {
+        console.error("Google sign up error:", error)
         throw error
       }
 
-      // No need to redirect here as Supabase will handle the redirect
+      // The redirect will happen automatically
+      console.log("Google sign up initiated successfully")
     } catch (error: any) {
       console.error("Signup error:", error)
-      setErrorMessage(error.message || "Failed to sign up with Google")
+      setErrorMessage(error.message || "Failed to sign up with Google. Please try again.")
       setIsLoading(false)
     }
   }
@@ -65,7 +75,7 @@ export default function SignupPage() {
                   <Button
                     onClick={handleGoogleSignUp}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 py-6"
+                    className="w-full flex items-center justify-center gap-2 py-6 bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
                   >
                     <svg className="h-5 w-5" viewBox="0 0 24 24">
                       <path
