@@ -1,28 +1,55 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { supabase } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, isLoading: authLoading } = useAuth()
+
+  // Check for error in URL params
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (error) {
+      setErrorMessage(decodeURIComponent(error))
+    }
+  }, [searchParams])
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      console.log("User already logged in, redirecting to dashboard")
+      router.push("/dashboard")
+    }
+  }, [user, authLoading, router])
 
   const handleGoogleSignIn = async () => {
+    if (isLoading) return
+
     setIsLoading(true)
     setErrorMessage("")
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log("Initiating Google sign in...")
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       })
 
@@ -30,12 +57,31 @@ export default function LoginPage() {
         throw error
       }
 
-      // No need to redirect here as Supabase will handle the redirect to the callback URL
+      console.log("OAuth redirect initiated")
+      // The redirect will happen automatically, no need to manually redirect
     } catch (error: any) {
       console.error("Login error:", error)
       setErrorMessage(error.message || "Failed to sign in with Google")
       setIsLoading(false)
     }
+  }
+
+  // Show loading if auth is still initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  // Don't render if user is already logged in (will redirect)
+  if (user) {
+    return null
   }
 
   return (

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,11 +11,14 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { supabase } from "@/lib/supabase/client"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function DashboardPage() {
   const { user, profile, isLoading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isPageLoaded, setIsPageLoaded] = useState(false)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [dashboardData, setDashboardData] = useState({
     totalBooks: 0,
     wishlistItems: 0,
@@ -27,8 +30,24 @@ export default function DashboardPage() {
   })
   const [isDataLoading, setIsDataLoading] = useState(true)
 
+  // Check for successful auth
+  useEffect(() => {
+    const authSuccess = searchParams.get("auth")
+    if (authSuccess === "success") {
+      setShowSuccessMessage(true)
+      // Remove the parameter from URL
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete("auth")
+      window.history.replaceState({}, "", newUrl.toString())
+
+      // Hide success message after 5 seconds
+      setTimeout(() => setShowSuccessMessage(false), 5000)
+    }
+  }, [searchParams])
+
   useEffect(() => {
     if (!isLoading && !user) {
+      console.log("No user found, redirecting to login")
       router.push("/login")
     }
 
@@ -146,7 +165,10 @@ export default function DashboardPage() {
   if ((isLoading || !user) && !isPageLoaded) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-64px)]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mx-auto"></div>
+          <p className="text-gray-500">Loading your dashboard...</p>
+        </div>
       </div>
     )
   }
@@ -184,6 +206,12 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {showSuccessMessage && (
+        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-800">
+          <AlertDescription>Welcome to BookSwap! You've successfully signed in to your account.</AlertDescription>
+        </Alert>
+      )}
+
       <DashboardTitle
         title={`Welcome back, ${displayName}!`}
         description="Here's an overview of your BookSwap activity"
@@ -426,7 +454,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <Button
                     variant="outline"
-                    className="flex flex-col h-24 items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-colors"
+                    className="flex flex-col h-24 items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-colors bg-transparent"
                     onClick={() => router.push("/dashboard/books/add")}
                   >
                     <Plus className="h-8 w-8 mb-2 text-emerald-500" />
@@ -434,7 +462,7 @@ export default function DashboardPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex flex-col h-24 items-center justify-center hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-colors"
+                    className="flex flex-col h-24 items-center justify-center hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 transition-colors bg-transparent"
                     onClick={() => router.push("/dashboard/wishlist")}
                   >
                     <BookMarked className="h-8 w-8 mb-2 text-amber-500" />
@@ -442,7 +470,7 @@ export default function DashboardPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex flex-col h-24 items-center justify-center hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+                    className="flex flex-col h-24 items-center justify-center hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors bg-transparent"
                     onClick={() => router.push("/dashboard/swaps")}
                   >
                     <RefreshCw className="h-8 w-8 mb-2 text-blue-500" />
@@ -450,7 +478,7 @@ export default function DashboardPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="flex flex-col h-24 items-center justify-center hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors"
+                    className="flex flex-col h-24 items-center justify-center hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-colors bg-transparent"
                     onClick={() => router.push("/dashboard/books")}
                   >
                     <BookOpen className="h-8 w-8 mb-2 text-purple-500" />

@@ -1,223 +1,287 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
 import { useAuth } from "@/contexts/auth-context"
-import { DashboardTitle } from "@/components/dashboard/title"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { BookPlus, Search, Edit, Trash2, Eye, AlertCircle, BookOpen, RefreshCw, X } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { DashboardTitle } from "@/components/dashboard/title"
 import { supabase } from "@/lib/supabase/client"
+import {
+  BookOpen,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
+  Eye,
+  AlertCircle,
+  RefreshCw,
+  DollarSign,
+  Gift,
+  BarChart3,
+} from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface Book {
   id: string
   title: string
   author: string
-  description: string
+  isbn: string | null
+  description: string | null
   condition: string
   listing_type: string
-  status: string
   price: number | null
-  cover_image: string | null
+  status: string
+  image_url: string | null
+  category_id: number | null
   created_at: string
-  category: {
-    name: string
-  } | null
+  updated_at: string
+}
+
+interface Category {
+  id: number
+  name: string
 }
 
 export default function BooksPage() {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [books, setBooks] = useState<Book[]>([])
-  const [loading, setLoading] = useState(true)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [listingTypeFilter, setListingTypeFilter] = useState("all")
-  const [deleting, setDeleting] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>("all")
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [selectedListingType, setSelectedListingType] = useState<string>("all")
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login")
+      return
+    }
+
+    if (user) {
+      fetchBooks()
+      fetchCategories()
+    }
+  }, [user, authLoading, router])
 
   const fetchBooks = async () => {
-    if (!user?.id) return
-
     try {
-      setLoading(true)
+      setIsLoading(true)
       setError(null)
 
-      let query = supabase
+      const { data, error: fetchError } = await supabase
         .from("books")
-        .select(`
-          id,
-          title,
-          author,
-          description,
-          condition,
-          listing_type,
-          status,
-          price,
-          cover_image,
-          created_at,
-          category:categories(name)
-        `)
-        .eq("owner_id", user.id)
+        .select("*")
+        .eq("owner_id", user?.id)
         .order("created_at", { ascending: false })
 
-      // Apply filters
-      if (statusFilter !== "all") {
-        query = query.eq("status", statusFilter)
-      }
-      if (listingTypeFilter !== "all") {
-        query = query.eq("listing_type", listingTypeFilter)
+      if (fetchError) {
+        throw fetchError
       }
 
-      const { data, error } = await query
-
-      if (error) throw error
-
-      // Filter by search term on client side
-      let filteredBooks = data || []
-      if (searchTerm) {
-        filteredBooks = filteredBooks.filter(
-          (book) =>
-            book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            book.author.toLowerCase().includes(searchTerm.toLowerCase()),
-        )
-      }
-
-      setBooks(filteredBooks)
+      setBooks(data || [])
     } catch (err: any) {
       console.error("Error fetching books:", err)
-      setError(err.message || "Failed to load books")
+      setError(err.message || "Failed to fetch books")
     } finally {
-      setLoading(false)
+      setIsLoading(false)
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error: fetchError } = await supabase.from("categories").select("id, name").order("name")
+
+      if (fetchError) {
+        throw fetchError
+      }
+
+      setCategories(data || [])
+    } catch (err: any) {
+      console.error("Error fetching categories:", err)
     }
   }
 
   const handleDeleteBook = async (bookId: string) => {
-    if (!confirm("Are you sure you want to delete this book?")) return
+    if (!confirm("Are you sure you want to delete this book?")) {
+      return
+    }
 
     try {
-      setDeleting(bookId)
-      const { error } = await supabase.from("books").delete().eq("id", bookId)
+      const { error: deleteError } = await supabase.from("books").delete().eq("id", bookId).eq("owner_id", user?.id)
 
-      if (error) throw error
+      if (deleteError) {
+        throw deleteError
+      }
 
       setBooks(books.filter((book) => book.id !== bookId))
     } catch (err: any) {
       console.error("Error deleting book:", err)
       alert("Failed to delete book: " + err.message)
-    } finally {
-      setDeleting(null)
     }
   }
 
-  const clearFilters = () => {
-    setSearchTerm("")
-    setStatusFilter("all")
-    setListingTypeFilter("all")
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "available":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "sold":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      case "donated":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      case "swapped":
+        return "bg-indigo-100 text-indigo-800 border-indigo-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
   }
 
-  const hasActiveFilters = searchTerm || statusFilter !== "all" || listingTypeFilter !== "all"
+  const getListingTypeIcon = (listingType: string) => {
+    switch (listingType.toLowerCase()) {
+      case "sell":
+        return <DollarSign className="h-4 w-4" />
+      case "donate":
+        return <Gift className="h-4 w-4" />
+      case "swap":
+        return <RefreshCw className="h-4 w-4" />
+      default:
+        return <BookOpen className="h-4 w-4" />
+    }
+  }
 
-  useEffect(() => {
-    fetchBooks()
-  }, [user?.id, statusFilter, listingTypeFilter])
+  const getListingTypeColor = (listingType: string) => {
+    switch (listingType.toLowerCase()) {
+      case "sell":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "donate":
+        return "bg-blue-100 text-blue-800 border-blue-200"
+      case "swap":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
 
-  // Filter books based on search term
-  const filteredBooks = books.filter(
-    (book) =>
+  const getCategoryName = (categoryId: number | null) => {
+    if (!categoryId) return "Uncategorized"
+    const category = categories.find((cat) => cat.id === categoryId)
+    return category?.name || "Unknown"
+  }
+
+  // Filter books based on search and filters
+  const filteredBooks = books.filter((book) => {
+    const matchesSearch =
       book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      book.author.toLowerCase().includes(searchTerm.toLowerCase())
 
-  if (loading) {
+    const matchesCategory = selectedCategory === "all" || book.category_id?.toString() === selectedCategory
+    const matchesStatus = selectedStatus === "all" || book.status.toLowerCase() === selectedStatus.toLowerCase()
+    const matchesListingType =
+      selectedListingType === "all" || book.listing_type.toLowerCase() === selectedListingType.toLowerCase()
+
+    return matchesSearch && matchesCategory && matchesStatus && matchesListingType
+  })
+
+  if (authLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <DashboardTitle title="My Books" description="Manage your book collection" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <div className="flex gap-4">
-                  <Skeleton className="w-16 h-20 rounded" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/2" />
-                    <Skeleton className="h-3 w-1/4" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <div className="flex justify-center items-center h-[calc(100vh-64px)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <DashboardTitle title="My Books" description="Manage your book collection" />
-        <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-          <Link href="/dashboard/books/add">
-            <BookPlus className="mr-2 h-4 w-4" />
-            Add New Book
-          </Link>
+        <DashboardTitle title="My Books" description="Manage your book collection and listings" />
+        <Button onClick={() => router.push("/dashboard/books/add")} className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Add New Book
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Search & Filter
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Search books by title or author..."
+                placeholder="Search books..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Status" />
+
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id.toString()}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Available">Available</SelectItem>
-                <SelectItem value="Sold">Sold</SelectItem>
-                <SelectItem value="Reserved">Reserved</SelectItem>
+                <SelectItem value="available">Available</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="sold">Sold</SelectItem>
+                <SelectItem value="donated">Donated</SelectItem>
+                <SelectItem value="swapped">Swapped</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={listingTypeFilter} onValueChange={setListingTypeFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="Type" />
+
+            <Select value={selectedListingType} onValueChange={setSelectedListingType}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Exchange">Exchange</SelectItem>
-                <SelectItem value="Sell">Sell</SelectItem>
-                <SelectItem value="Donate">Donate</SelectItem>
+                <SelectItem value="sell">For Sale</SelectItem>
+                <SelectItem value="donate">Donate</SelectItem>
+                <SelectItem value="swap">Swap</SelectItem>
               </SelectContent>
             </Select>
-            {hasActiveFilters && (
-              <Button variant="outline" onClick={clearFilters} className="whitespace-nowrap bg-transparent">
-                <X className="mr-2 h-4 w-4" />
-                Clear
-              </Button>
-            )}
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("")
+                setSelectedCategory("all")
+                setSelectedStatus("all")
+                setSelectedListingType("all")
+              }}
+            >
+              Clear Filters
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -226,123 +290,208 @@ export default function BooksPage() {
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={fetchBooks} className="ml-4 bg-transparent">
-              <RefreshCw className="mr-2 h-4 w-4" />
+          <AlertDescription>
+            {error}
+            <Button variant="outline" size="sm" onClick={fetchBooks} className="ml-2 bg-transparent">
               Try Again
             </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Books Grid */}
-      {filteredBooks.length === 0 && !loading && !error ? (
-        <Card className="border-dashed border-2 border-gray-200 dark:border-gray-700">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <BookOpen className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              {hasActiveFilters ? "No books match your filters" : "No books yet"}
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md">
-              {hasActiveFilters
-                ? "Try adjusting your search terms or filters to find more books."
-                : "Start building your book collection by adding your first book."}
-            </p>
-            <div className="flex gap-3">
-              {hasActiveFilters ? (
-                <Button variant="outline" onClick={clearFilters}>
-                  <X className="mr-2 h-4 w-4" />
-                  Clear Filters
-                </Button>
-              ) : null}
-              <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-                <Link href="/dashboard/books/add">
-                  <BookPlus className="mr-2 h-4 w-4" />
-                  Add Your First Book
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredBooks.map((book) => (
-            <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <CardContent className="p-0">
-                <div className="flex">
-                  {/* Book Cover */}
-                  <div className="w-24 h-32 bg-gray-100 dark:bg-gray-800 flex-shrink-0 relative">
-                    {book.cover_image ? (
-                      <Image
-                        src={book.cover_image || "/placeholder.svg"}
-                        alt={book.title}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <BookOpen className="h-8 w-8 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Book Details */}
-                  <div className="flex-1 p-4">
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-semibold text-sm line-clamp-2 leading-tight">{book.title}</h3>
-                      </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">by {book.author}</p>
-
-                      <div className="flex flex-wrap gap-1">
-                        <Badge variant={book.status === "Available" ? "default" : "secondary"} className="text-xs">
-                          {book.status}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {book.listing_type}
-                        </Badge>
-                        {book.listing_type === "Sell" && book.price && (
-                          <Badge variant="outline" className="text-xs">
-                            ${book.price}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1 pt-2">
-                        <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-xs">
-                          <Link href={`/dashboard/books/${book.id}`}>
-                            <Eye className="h-3 w-3 mr-1" />
-                            View
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-xs">
-                          <Link href={`/dashboard/books/edit/${book.id}`}>
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteBook(book.id)}
-                          disabled={deleting === book.id}
-                          className="h-8 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          {deleting === book.id ? (
-                            <RefreshCw className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <Skeleton className="h-48 w-full rounded-md" />
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-6 w-20" />
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Books Grid */}
+      {!isLoading && !error && (
+        <>
+          {filteredBooks.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <BookOpen className="h-16 w-16 text-gray-400 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {books.length === 0 ? "No books yet" : "No books match your filters"}
+                </h3>
+                <p className="text-gray-500 mb-6 max-w-md">
+                  {books.length === 0
+                    ? "Start building your library by adding your first book to BookSwap."
+                    : "Try adjusting your search terms or filters to find what you're looking for."}
+                </p>
+                {books.length === 0 ? (
+                  <Button onClick={() => router.push("/dashboard/books/add")} className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Your First Book
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("")
+                      setSelectedCategory("all")
+                      setSelectedStatus("all")
+                      setSelectedListingType("all")
+                    }}
+                  >
+                    Clear All Filters
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {filteredBooks.map((book) => (
+                <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="aspect-[3/4] relative bg-gray-100">
+                    {book.image_url ? (
+                      <img
+                        src={book.image_url || "/placeholder.svg"}
+                        alt={book.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <BookOpen className="h-16 w-16 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="secondary" size="sm" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                            </svg>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/books/${book.id}`)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/books/edit/${book.id}`)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit Book
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteBook(book.id)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Book
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-lg line-clamp-2">{book.title}</h3>
+                        <p className="text-sm text-gray-600">by {book.author}</p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className={getStatusColor(book.status)}>{book.status}</Badge>
+                        <Badge variant="outline" className={getListingTypeColor(book.listing_type)}>
+                          <span className="flex items-center gap-1">
+                            {getListingTypeIcon(book.listing_type)}
+                            {book.listing_type}
+                          </span>
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-1 text-sm text-gray-600">
+                        <p>Category: {getCategoryName(book.category_id)}</p>
+                        <p>Condition: {book.condition}</p>
+                        {book.price && <p className="font-medium text-green-600">${book.price}</p>}
+                      </div>
+
+                      {book.description && <p className="text-sm text-gray-600 line-clamp-2">{book.description}</p>}
+
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/books/${book.id}`)}
+                          className="flex-1"
+                        >
+                          <Eye className="mr-1 h-4 w-4" />
+                          View
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/books/edit/${book.id}`)}
+                          className="flex-1"
+                        >
+                          <Edit className="mr-1 h-4 w-4" />
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Summary Stats */}
+      {!isLoading && !error && books.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Collection Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">{books.length}</div>
+                <div className="text-sm text-gray-600">Total Books</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {books.filter((book) => book.status === "available").length}
+                </div>
+                <div className="text-sm text-gray-600">Available</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {books.filter((book) => book.listing_type === "sell").length}
+                </div>
+                <div className="text-sm text-gray-600">For Sale</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {books.filter((book) => book.listing_type === "swap").length}
+                </div>
+                <div className="text-sm text-gray-600">For Swap</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
