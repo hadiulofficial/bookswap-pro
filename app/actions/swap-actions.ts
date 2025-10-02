@@ -2,13 +2,14 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
-import { v4 as uuidv4 } from "uuid"
 
 export async function requestBookSwap(userId: string, bookId: string, offeredBookId: string, message?: string) {
   try {
+    console.log("=== REQUEST BOOK SWAP STARTED ===")
     console.log("Requesting book swap:", { userId, bookId, offeredBookId, message })
 
     if (!userId || !bookId || !offeredBookId) {
+      console.error("Missing required fields:", { userId, bookId, offeredBookId })
       return {
         success: false,
         error: "Missing required information",
@@ -18,13 +19,14 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     const supabase = createServerSupabaseClient()
 
     // Get the book owner's ID
+    console.log("Fetching book details for bookId:", bookId)
     const { data: book, error: bookError } = await supabase
       .from("books")
-      .select("owner_id, listing_type")
+      .select("owner_id, listing_type, title")
       .eq("id", bookId)
       .single()
 
-    if (bookError || !book) {
+    if (bookError) {
       console.error("Error fetching book:", bookError)
       return {
         success: false,
@@ -32,24 +34,45 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
-    // Verify the book is listed for exchange - use case insensitive comparison
+    if (!book) {
+      console.error("Book not found in database")
+      return {
+        success: false,
+        error: "Book not found",
+      }
+    }
+
+    console.log("Book found:", book)
+
+    // Verify the book is listed for exchange
     const bookListingType = book.listing_type.toLowerCase()
     if (bookListingType !== "exchange" && bookListingType !== "swap") {
+      console.error("Book is not available for exchange. Listing type:", book.listing_type)
       return {
         success: false,
         error: "This book is not available for exchange",
       }
     }
 
+    // Check if user is trying to swap with their own book
+    if (book.owner_id === userId) {
+      console.error("User trying to swap with their own book")
+      return {
+        success: false,
+        error: "You cannot swap with your own book",
+      }
+    }
+
     // Verify the offered book belongs to the user and is listed for exchange
+    console.log("Fetching offered book details for offeredBookId:", offeredBookId)
     const { data: offeredBook, error: offeredBookError } = await supabase
       .from("books")
-      .select("owner_id, listing_type, status")
+      .select("owner_id, listing_type, status, title")
       .eq("id", offeredBookId)
       .eq("owner_id", userId)
       .single()
 
-    if (offeredBookError || !offeredBook) {
+    if (offeredBookError) {
       console.error("Error fetching offered book:", offeredBookError)
       return {
         success: false,
@@ -57,17 +80,29 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
+    if (!offeredBook) {
+      console.error("Offered book not found or doesn't belong to user")
+      return {
+        success: false,
+        error: "The book you're offering is not valid",
+      }
+    }
+
+    console.log("Offered book found:", offeredBook)
+
     // Check if the offered book is available
     if (offeredBook.status !== "available") {
+      console.error("Offered book is not available. Status:", offeredBook.status)
       return {
         success: false,
         error: "The book you're offering is not available for exchange",
       }
     }
 
-    // Use case insensitive comparison for listing type
+    // Check listing type
     const offeredBookListingType = offeredBook.listing_type.toLowerCase()
     if (offeredBookListingType !== "exchange" && offeredBookListingType !== "swap") {
+      console.error("Offered book is not listed for exchange. Listing type:", offeredBook.listing_type)
       return {
         success: false,
         error: "The book you're offering is not available for exchange",
@@ -75,63 +110,107 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     }
 
     // Check if a swap request already exists
+    console.log("Checking for existing swap requests")
     const { data: existingRequest, error: existingRequestError } = await supabase
       .from("book_swaps")
-      .select("id")
+      .select("id, status")
       .eq("requester_id", userId)
       .eq("requested_book_id", bookId)
       .eq("offered_book_id", offeredBookId)
       .maybeSingle()
 
+    if (existingRequestError) {
+      console.error("Error checking for existing requests:", existingRequestError)
+    }
+
     if (existingRequest) {
+      console.error("Swap request already exists:", existingRequest)
       return {
         success: false,
         error: "You have already requested to swap this book",
       }
     }
 
-    // Create the swap request
-    const swapId = uuidv4()
-    const { error: insertError } = await supabase.from("book_swaps").insert({
-      id: swapId,
+    // Create the swap request with explicit UUID generation
+    const swapData = {
       requester_id: userId,
       owner_id: book.owner_id,
       requested_book_id: bookId,
       offered_book_id: offeredBookId,
       message: message || null,
-      status: "pending",
+      status: "pending" as const,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    })
+    }
+
+    console.log("Creating swap request with data:", swapData)
+
+    const { data: insertedSwap, error: insertError } = await supabase
+      .from("book_swaps")
+      .insert(swapData)
+      .select("id")
+      .single()
 
     if (insertError) {
       console.error("Error creating swap request:", insertError)
+      console.error("Insert error details:", {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+      })
+      return {
+        success: false,
+        error: `Failed to create swap request: ${insertError.message}`,
+      }
+    }
+
+    if (!insertedSwap) {
+      console.error("Swap created but no ID returned")
       return {
         success: false,
         error: "Failed to create swap request",
       }
     }
 
+    console.log("Swap request created successfully with ID:", insertedSwap.id)
+
     // Create a notification for the book owner
-    await supabase.from("notifications").insert({
-      id: uuidv4(),
+    const notificationData = {
       user_id: book.owner_id,
       title: "New Swap Request",
-      message: `Someone wants to swap one of their books with your book`,
-      type: "swap_request",
-      related_id: swapId,
+      message: `Someone wants to swap "${offeredBook.title}" with your book "${book.title}"`,
+      type: "swap_request" as const,
+      related_id: insertedSwap.id,
       read: false,
       created_at: new Date().toISOString(),
-    })
+    }
 
+    console.log("Creating notification with data:", notificationData)
+
+    const { error: notificationError } = await supabase.from("notifications").insert(notificationData)
+
+    if (notificationError) {
+      console.error("Error creating notification:", notificationError)
+      // Don't fail the swap request if notification fails
+    } else {
+      console.log("Notification created successfully")
+    }
+
+    // Revalidate relevant paths
+    console.log("Revalidating paths")
     revalidatePath("/dashboard/swaps")
     revalidatePath(`/books/${bookId}`)
 
+    console.log("=== REQUEST BOOK SWAP COMPLETED SUCCESSFULLY ===")
     return {
       success: true,
+      swapId: insertedSwap.id,
     }
   } catch (error: any) {
+    console.error("=== EXCEPTION IN REQUEST BOOK SWAP ===")
     console.error("Exception requesting book swap:", error)
+    console.error("Error stack:", error.stack)
     return {
       success: false,
       error: error.message || "An unexpected error occurred",
@@ -213,14 +292,13 @@ export async function updateSwapStatus(swapId: string, status: "approved" | "rej
 
     // Create a notification for the requester
     await supabase.from("notifications").insert({
-      id: uuidv4(),
       user_id: swap.requester_id,
       title: status === "approved" ? "Swap Request Approved" : "Swap Request Rejected",
       message:
         status === "approved"
           ? "Your swap request has been approved! Contact the owner to arrange the exchange."
           : "Your swap request has been rejected.",
-      type: "swap_" + status,
+      type: `swap_${status}` as const,
       related_id: swapId,
       read: false,
       created_at: new Date().toISOString(),

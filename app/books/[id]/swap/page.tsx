@@ -13,7 +13,7 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Loader2, BookOpen, ArrowLeft, RefreshCw, Check, AlertCircle } from "lucide-react"
+import { Loader2, BookOpen, ArrowLeft, RefreshCw, Check, AlertCircle, CheckCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { requestBookSwap } from "@/app/actions/swap-actions"
@@ -164,9 +164,14 @@ export default function SwapRequestPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    console.log("=== FORM SUBMISSION STARTED ===")
     console.log("Form submitted with selectedBookId:", selectedBookId)
+    console.log("User ID:", user?.id)
+    console.log("Book ID:", bookId)
+    console.log("Message:", message)
 
     if (!user) {
+      console.error("No user found")
       toast({
         title: "Authentication required",
         description: "Please sign in to request a swap",
@@ -176,6 +181,7 @@ export default function SwapRequestPage() {
     }
 
     if (!selectedBookId || selectedBookId === "") {
+      console.error("No book selected")
       toast({
         title: "Book required",
         description: "Please select a book to offer for swap",
@@ -196,29 +202,42 @@ export default function SwapRequestPage() {
 
       const result = await requestBookSwap(user.id, bookId, selectedBookId, message)
 
-      console.log("Swap request result:", result)
+      console.log("=== SWAP REQUEST RESULT ===")
+      console.log("Result:", result)
 
       if (result.success) {
+        console.log("Swap request successful, swap ID:", result.swapId)
         toast({
-          title: "Swap Request Sent",
-          description: "Your swap request has been sent to the book owner",
+          title: "Swap Request Sent Successfully!",
+          description: "The book owner has been notified. Check your swaps dashboard for updates.",
+          duration: 5000,
         })
-        router.push("/dashboard/swaps")
+
+        // Wait a bit for the toast to be visible, then redirect
+        setTimeout(() => {
+          console.log("Redirecting to /dashboard/swaps")
+          router.push("/dashboard/swaps")
+        }, 1000)
       } else {
+        console.error("Swap request failed:", result.error)
         toast({
           title: "Request Failed",
-          description: result.error || "Failed to send swap request",
+          description: result.error || "Failed to send swap request. Please try again.",
           variant: "destructive",
+          duration: 5000,
         })
+        setSubmitting(false)
       }
     } catch (err: any) {
+      console.error("=== EXCEPTION DURING FORM SUBMISSION ===")
       console.error("Error requesting swap:", err)
+      console.error("Error stack:", err.stack)
       toast({
         title: "Error",
-        description: err.message || "An unexpected error occurred",
+        description: err.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
+        duration: 5000,
       })
-    } finally {
       setSubmitting(false)
     }
   }
@@ -233,6 +252,7 @@ export default function SwapRequestPage() {
     toast({
       title: "Book Selected",
       description: "Click 'Request Swap' to send your request",
+      duration: 2000,
     })
   }
 
@@ -351,7 +371,6 @@ export default function SwapRequestPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {myBooks.map((bookItem) => {
                             const isSelected = selectedBookId === bookItem.id
-                            console.log(`Rendering book ${bookItem.id}, isSelected: ${isSelected}`)
 
                             return (
                               <button
@@ -406,9 +425,10 @@ export default function SwapRequestPage() {
                       )}
 
                       {selectedBookId && (
-                        <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+                        <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-md flex items-start">
+                          <CheckCircle className="h-5 w-5 text-emerald-600 mr-2 flex-shrink-0 mt-0.5" />
                           <p className="text-sm text-emerald-700">
-                            ✓ Book selected! Fill in the message below and click "Request Swap" to continue.
+                            Book selected! Fill in the message below (optional) and click "Request Swap" to continue.
                           </p>
                         </div>
                       )}
@@ -425,6 +445,7 @@ export default function SwapRequestPage() {
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         className="min-h-[120px]"
+                        disabled={submitting}
                       />
                       <p className="text-sm text-gray-500 mt-2">
                         Let the owner know why you're interested in swapping or any other details.
@@ -432,11 +453,20 @@ export default function SwapRequestPage() {
                     </div>
 
                     {/* Submit button */}
-                    <div className="flex justify-end">
+                    <div className="flex flex-col sm:flex-row gap-4 justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => router.back()}
+                        disabled={submitting}
+                        className="sm:w-auto"
+                      >
+                        Cancel
+                      </Button>
                       <Button
                         type="submit"
                         disabled={submitting || myBooks.length === 0 || !selectedBookId || selectedBookId === ""}
-                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="sm:w-auto bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {submitting ? (
                           <>
