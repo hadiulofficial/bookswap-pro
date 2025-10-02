@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,7 +39,7 @@ interface Book {
   listing_type: string
   price: number | null
   status: string
-  image_url: string | null
+  cover_image: string | null
   category_id: number | null
   created_at: string
   updated_at: string
@@ -60,6 +61,7 @@ export default function BooksPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [selectedListingType, setSelectedListingType] = useState<string>("all")
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -117,6 +119,7 @@ export default function BooksPage() {
     }
 
     try {
+      setDeletingId(bookId)
       const { error: deleteError } = await supabase.from("books").delete().eq("id", bookId).eq("owner_id", user?.id)
 
       if (deleteError) {
@@ -127,6 +130,8 @@ export default function BooksPage() {
     } catch (err: any) {
       console.error("Error deleting book:", err)
       alert("Failed to delete book: " + err.message)
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -149,9 +154,9 @@ export default function BooksPage() {
 
   const getListingTypeIcon = (listingType: string) => {
     switch (listingType.toLowerCase()) {
-      case "sell":
+      case "sale":
         return <DollarSign className="h-4 w-4" />
-      case "donate":
+      case "donation":
         return <Gift className="h-4 w-4" />
       case "swap":
         return <RefreshCw className="h-4 w-4" />
@@ -162,9 +167,9 @@ export default function BooksPage() {
 
   const getListingTypeColor = (listingType: string) => {
     switch (listingType.toLowerCase()) {
-      case "sell":
+      case "sale":
         return "bg-green-100 text-green-800 border-green-200"
-      case "donate":
+      case "donation":
         return "bg-blue-100 text-blue-800 border-blue-200"
       case "swap":
         return "bg-purple-100 text-purple-800 border-purple-200"
@@ -265,8 +270,8 @@ export default function BooksPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="sell">For Sale</SelectItem>
-                <SelectItem value="donate">Donate</SelectItem>
+                <SelectItem value="sale">For Sale</SelectItem>
+                <SelectItem value="donation">Donate</SelectItem>
                 <SelectItem value="swap">Swap</SelectItem>
               </SelectContent>
             </Select>
@@ -360,11 +365,13 @@ export default function BooksPage() {
               {filteredBooks.map((book) => (
                 <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="aspect-[3/4] relative bg-gray-100">
-                    {book.image_url ? (
-                      <img
-                        src={book.image_url || "/placeholder.svg"}
+                    {book.cover_image ? (
+                      <Image
+                        src={book.cover_image || "/placeholder.svg"}
                         alt={book.title}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -392,10 +399,20 @@ export default function BooksPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDeleteBook(book.id)}
+                            disabled={deletingId === book.id}
                             className="text-red-600 focus:text-red-600"
                           >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Book
+                            {deletingId === book.id ? (
+                              <>
+                                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                Deleting...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Book
+                              </>
+                            )}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -479,7 +496,7 @@ export default function BooksPage() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {books.filter((book) => book.listing_type === "sell").length}
+                  {books.filter((book) => book.listing_type === "sale").length}
                 </div>
                 <div className="text-sm text-gray-600">For Sale</div>
               </div>
