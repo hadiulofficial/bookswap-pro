@@ -13,7 +13,6 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Loader2, BookOpen, ArrowLeft, RefreshCw, Check, AlertCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
@@ -32,7 +31,7 @@ export default function SwapRequestPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState("")
   const [myBooks, setMyBooks] = useState<any[]>([])
-  const [selectedBookId, setSelectedBookId] = useState<string | null>(null)
+  const [selectedBookId, setSelectedBookId] = useState<string>("")
 
   useEffect(() => {
     if (!user) {
@@ -47,9 +46,8 @@ export default function SwapRequestPage() {
   const fetchBookDetails = async () => {
     try {
       setLoading(true)
-      setError(null) // Explicitly clear previous errors before fetching
+      setError(null)
 
-      // Fetch the book first
       const { data: bookData, error: bookError } = await supabase.from("books").select("*").eq("id", bookId).single()
 
       if (bookError) {
@@ -60,18 +58,15 @@ export default function SwapRequestPage() {
         throw new Error("Book not found")
       }
 
-      // Check if book is available for exchange - use case insensitive comparison
       const listingType = bookData.listing_type.toLowerCase()
       if (listingType !== "exchange" && listingType !== "swap") {
         throw new Error("This book is not available for exchange")
       }
 
-      // Check if user is not the owner
       if (bookData.owner_id === user?.id) {
         throw new Error("You cannot swap with your own book")
       }
 
-      // Now fetch the owner's profile separately
       const { data: ownerData, error: ownerError } = await supabase
         .from("profiles")
         .select("id, username, full_name, location, created_at")
@@ -80,7 +75,6 @@ export default function SwapRequestPage() {
 
       if (ownerError) {
         console.error("Error fetching owner:", ownerError)
-        // Continue even if owner fetch fails
       }
 
       setBook(bookData)
@@ -102,7 +96,6 @@ export default function SwapRequestPage() {
     try {
       console.log(`fetchMyBooks: Fetching books for user ID: ${user.id}`)
 
-      // First, get ALL books for the user to see what we're working with
       const { data: allUserBooks, error: queryError } = await supabase
         .from("books")
         .select("id, title, author, cover_image, condition, listing_type, status, owner_id")
@@ -124,7 +117,6 @@ export default function SwapRequestPage() {
         return
       }
 
-      // Now filter for exchangeable books in JavaScript (more reliable than Supabase filtering)
       const exchangeableBooks = allUserBooks.filter((book) => {
         const isAvailable = book.status?.toLowerCase() === "available"
         const isExchangeable =
@@ -143,7 +135,6 @@ export default function SwapRequestPage() {
 
       if (exchangeableBooks.length > 0) {
         setMyBooks(exchangeableBooks)
-        // Clear any previous error about not having books
         if (
           error === "You don't have any books available for exchange. Please add a book first." ||
           error === "You don't have any books listed yet. Please add a book first."
@@ -152,7 +143,6 @@ export default function SwapRequestPage() {
         }
       } else {
         setMyBooks([])
-        // Only set this error if there's no other error from fetchBookDetails
         if (!error || error === "You don't have any books listed yet. Please add a book first.") {
           setError(
             "You don't have any books available for exchange. Please add a book with listing type 'Exchange' or 'Swap' and status 'Available'.",
@@ -174,6 +164,8 @@ export default function SwapRequestPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    console.log("Form submitted with selectedBookId:", selectedBookId)
+
     if (!user) {
       toast({
         title: "Authentication required",
@@ -183,7 +175,7 @@ export default function SwapRequestPage() {
       return
     }
 
-    if (!selectedBookId) {
+    if (!selectedBookId || selectedBookId === "") {
       toast({
         title: "Book required",
         description: "Please select a book to offer for swap",
@@ -195,7 +187,16 @@ export default function SwapRequestPage() {
     setSubmitting(true)
 
     try {
+      console.log("Calling requestBookSwap with:", {
+        userId: user.id,
+        requestedBookId: bookId,
+        offeredBookId: selectedBookId,
+        message: message,
+      })
+
       const result = await requestBookSwap(user.id, bookId, selectedBookId, message)
+
+      console.log("Swap request result:", result)
 
       if (result.success) {
         toast({
@@ -214,12 +215,25 @@ export default function SwapRequestPage() {
       console.error("Error requesting swap:", err)
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: err.message || "An unexpected error occurred",
         variant: "destructive",
       })
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleBookSelect = (bookIdToSelect: string) => {
+    console.log("handleBookSelect called with bookId:", bookIdToSelect)
+    console.log("Previous selectedBookId:", selectedBookId)
+    setSelectedBookId(bookIdToSelect)
+    console.log("New selectedBookId set to:", bookIdToSelect)
+
+    // Show toast to confirm selection
+    toast({
+      title: "Book Selected",
+      description: "Click 'Request Swap' to send your request",
+    })
   }
 
   if (!user) {
@@ -261,7 +275,7 @@ export default function SwapRequestPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-3"
+                      className="mt-3 bg-transparent"
                       onClick={() => router.push("/dashboard/books/add")}
                     >
                       Add a Book
@@ -324,34 +338,43 @@ export default function SwapRequestPage() {
                           <p className="font-medium">You don't have any books available for exchange</p>
                           <p className="text-sm mt-1">Add a book with listing type "Exchange" first.</p>
                           <Button
+                            type="button"
                             variant="outline"
                             size="sm"
-                            className="mt-3"
+                            className="mt-3 bg-transparent"
                             onClick={() => router.push("/dashboard/books/add")}
                           >
                             Add a Book
                           </Button>
                         </div>
                       ) : (
-                        <RadioGroup
-                          value={selectedBookId || ""}
-                          onValueChange={setSelectedBookId}
-                          className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                        >
-                          {myBooks.map((book) => (
-                            <div key={book.id} className="relative">
-                              <RadioGroupItem value={book.id} id={book.id} className="peer sr-only" />
-                              <Label
-                                htmlFor={book.id}
-                                className="block cursor-pointer rounded-lg border-2 border-gray-200 p-4 hover:border-gray-300 peer-checked:border-emerald-500 peer-checked:ring-1 peer-checked:ring-emerald-500"
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {myBooks.map((bookItem) => {
+                            const isSelected = selectedBookId === bookItem.id
+                            console.log(`Rendering book ${bookItem.id}, isSelected: ${isSelected}`)
+
+                            return (
+                              <button
+                                key={bookItem.id}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  handleBookSelect(bookItem.id)
+                                }}
+                                className={`relative text-left rounded-lg border-2 p-4 transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "border-emerald-500 ring-2 ring-emerald-500 bg-emerald-50"
+                                    : "border-gray-200 hover:border-gray-300 bg-white hover:shadow-md"
+                                }`}
                               >
                                 <div className="flex gap-4">
                                   <div className="flex-shrink-0">
-                                    {book.cover_image ? (
+                                    {bookItem.cover_image ? (
                                       <div className="relative w-16 h-24 overflow-hidden rounded-md border border-gray-200">
                                         <Image
-                                          src={book.cover_image || "/placeholder.svg"}
-                                          alt={`Cover for ${book.title}`}
+                                          src={bookItem.cover_image || "/placeholder.svg"}
+                                          alt={`Cover for ${bookItem.title}`}
                                           fill
                                           className="object-cover"
                                           sizes="64px"
@@ -363,21 +386,31 @@ export default function SwapRequestPage() {
                                       </div>
                                     )}
                                   </div>
-                                  <div>
-                                    <h3 className="font-medium line-clamp-1">{book.title}</h3>
-                                    <p className="text-sm text-gray-600 line-clamp-1">By {book.author}</p>
+                                  <div className="flex-1">
+                                    <h3 className="font-medium line-clamp-1">{bookItem.title}</h3>
+                                    <p className="text-sm text-gray-600 line-clamp-1">By {bookItem.author}</p>
                                     <Badge variant="outline" className="mt-2 text-xs">
-                                      {book.condition}
+                                      {bookItem.condition}
                                     </Badge>
                                   </div>
                                 </div>
-                                <div className="absolute top-2 right-2 h-5 w-5 text-emerald-600 opacity-0 peer-checked:opacity-100">
-                                  <Check className="h-5 w-5" />
-                                </div>
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2 h-6 w-6 bg-emerald-600 rounded-full flex items-center justify-center">
+                                    <Check className="h-4 w-4 text-white" />
+                                  </div>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {selectedBookId && (
+                        <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+                          <p className="text-sm text-emerald-700">
+                            ✓ Book selected! Fill in the message below and click "Request Swap" to continue.
+                          </p>
+                        </div>
                       )}
                     </div>
 
@@ -402,8 +435,8 @@ export default function SwapRequestPage() {
                     <div className="flex justify-end">
                       <Button
                         type="submit"
-                        disabled={submitting || myBooks.length === 0 || !selectedBookId}
-                        className="w-full md:w-auto"
+                        disabled={submitting || myBooks.length === 0 || !selectedBookId || selectedBookId === ""}
+                        className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {submitting ? (
                           <>
