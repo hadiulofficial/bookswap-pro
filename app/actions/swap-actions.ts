@@ -82,14 +82,19 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     console.log("Offered book listing_type:", offeredBook.listing_type)
     console.log("Offered book status:", offeredBook.status)
 
-    // Check if the offered book is available
-    if (offeredBook.status !== "available") {
-      console.error("Offered book is not available. Status:", offeredBook.status)
+    // Check if the offered book is available - CASE INSENSITIVE
+    const bookStatus = (offeredBook.status || "").toLowerCase().trim()
+    console.log("Normalized book status:", bookStatus)
+
+    if (bookStatus !== "available") {
+      console.error("Offered book is not available. Status:", offeredBook.status, "Normalized:", bookStatus)
       return {
         success: false,
-        error: `The book you're offering is not available (status: ${offeredBook.status})`,
+        error: `The book you're offering is not available (current status: ${offeredBook.status})`,
       }
     }
+
+    console.log("Offered book status is valid (available)")
 
     // Check listing type - be more lenient with the check
     const offeredBookListingType = (offeredBook.listing_type || "").toLowerCase().trim()
@@ -109,7 +114,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
-    console.log("Offered book is valid for exchange")
+    console.log("Offered book listing type is valid (exchange/swap)")
 
     // Check if a swap request already exists
     console.log("Checking for existing swap requests")
@@ -133,7 +138,9 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
-    // Create the swap request with explicit UUID generation
+    console.log("No existing swap request found, proceeding with creation")
+
+    // Create the swap request
     const swapData = {
       requester_id: userId,
       owner_id: book.owner_id,
@@ -335,7 +342,6 @@ export async function getUserSwappableBooks(userId: string) {
       .from("books")
       .select("*")
       .eq("owner_id", userId)
-      .eq("status", "available")
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -343,15 +349,19 @@ export async function getUserSwappableBooks(userId: string) {
       return []
     }
 
-    // Filter for exchange/swap books on the client side
+    // Filter for exchange/swap books on the client side with case-insensitive checks
     const exchangeableBooks = (data || []).filter((book) => {
+      const status = (book.status || "").toLowerCase().trim()
       const listingType = (book.listing_type || "").toLowerCase().trim()
-      return (
+
+      const isAvailable = status === "available"
+      const isExchangeable =
         listingType === "exchange" ||
         listingType === "swap" ||
         listingType.includes("exchange") ||
         listingType.includes("swap")
-      )
+
+      return isAvailable && isExchangeable
     })
 
     console.log(`Found ${exchangeableBooks.length} exchangeable books out of ${data?.length || 0} total books`)
