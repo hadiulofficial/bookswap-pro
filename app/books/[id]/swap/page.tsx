@@ -13,7 +13,7 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Loader2, BookOpen, ArrowLeft, RefreshCw, Check, AlertCircle, CheckCircle } from "lucide-react"
+import { Loader2, BookOpen, ArrowLeft, RefreshCw, Check, AlertCircle, CheckCircle, Info } from "lucide-react"
 import { supabase } from "@/lib/supabase/client"
 import { toast } from "@/components/ui/use-toast"
 import { requestBookSwap } from "@/app/actions/swap-actions"
@@ -31,6 +31,7 @@ export default function SwapRequestPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState("")
   const [myBooks, setMyBooks] = useState<any[]>([])
+  const [allMyBooks, setAllMyBooks] = useState<any[]>([])
   const [selectedBookId, setSelectedBookId] = useState<string>("")
 
   useEffect(() => {
@@ -48,15 +49,19 @@ export default function SwapRequestPage() {
       setLoading(true)
       setError(null)
 
+      console.log("Fetching book details for bookId:", bookId)
       const { data: bookData, error: bookError } = await supabase.from("books").select("*").eq("id", bookId).single()
 
       if (bookError) {
+        console.error("Error fetching book:", bookError)
         throw bookError
       }
 
       if (!bookData) {
         throw new Error("Book not found")
       }
+
+      console.log("Book data fetched:", bookData)
 
       if (bookData.owner_id === user?.id) {
         throw new Error("You cannot swap with your own book")
@@ -89,32 +94,66 @@ export default function SwapRequestPage() {
     }
 
     try {
-      console.log(`fetchMyBooks: Fetching books for user ID: ${user.id}`)
+      console.log(`=== FETCHING USER'S BOOKS ===`)
+      console.log(`User ID: ${user.id}`)
 
-      const { data: allUserBooks, error: queryError } = await supabase
+      // First, get ALL books for this user (no filters)
+      const { data: allBooks, error: queryError } = await supabase
         .from("books")
         .select("id, title, author, cover_image, condition, listing_type, status, owner_id")
         .eq("owner_id", user.id)
-        .eq("status", "available")
+        .order("created_at", { ascending: false })
 
-      console.log("fetchMyBooks: User books from database:", allUserBooks)
+      console.log("Query error:", queryError)
+      console.log("All books fetched:", allBooks)
 
       if (queryError) {
-        console.error("fetchMyBooks: Error querying user's books:", queryError)
-        setError(`Failed to load your books: ${queryError.message}`)
+        console.error("Error querying user's books:", queryError)
+        toast({
+          title: "Error Loading Books",
+          description: queryError.message,
+          variant: "destructive",
+        })
         setMyBooks([])
+        setAllMyBooks([])
         return
       }
 
-      if (!allUserBooks || allUserBooks.length === 0) {
-        console.log("fetchMyBooks: User has no available books.")
+      if (!allBooks || allBooks.length === 0) {
+        console.log("User has no books at all.")
         setMyBooks([])
-        setError("You don't have any available books listed. Please add a book first.")
+        setAllMyBooks([])
+        setError("You don't have any books listed yet. Please add a book first.")
         return
       }
 
-      // Filter for exchangeable books - be more lenient
-      const exchangeableBooks = allUserBooks.filter((book) => {
+      setAllMyBooks(allBooks)
+      console.log(`Total books found: ${allBooks.length}`)
+
+      // Log each book's details
+      allBooks.forEach((book, index) => {
+        console.log(`Book ${index + 1}:`, {
+          title: book.title,
+          status: book.status,
+          listing_type: book.listing_type,
+        })
+      })
+
+      // Filter for available books
+      const availableBooks = allBooks.filter((book) => book.status?.toLowerCase() === "available")
+      console.log(`Available books: ${availableBooks.length}`)
+
+      if (availableBooks.length === 0) {
+        console.log("No available books found")
+        setMyBooks([])
+        setError(
+          `You have ${allBooks.length} book(s) but none are available for swapping. Please check your books' status.`,
+        )
+        return
+      }
+
+      // Filter for exchangeable books
+      const exchangeableBooks = availableBooks.filter((book) => {
         const listingType = (book.listing_type || "").toLowerCase().trim()
         const isExchangeable =
           listingType === "exchange" ||
@@ -122,48 +161,52 @@ export default function SwapRequestPage() {
           listingType.includes("exchange") ||
           listingType.includes("swap")
 
-        console.log(
-          `Book "${book.title}": listing_type="${book.listing_type}", normalized="${listingType}", isExchangeable=${isExchangeable}`,
-        )
+        console.log(`Checking "${book.title}":`, {
+          listingType: book.listing_type,
+          normalized: listingType,
+          isExchangeable,
+        })
 
         return isExchangeable
       })
 
-      console.log(
-        `fetchMyBooks: Found ${exchangeableBooks.length} exchangeable books out of ${allUserBooks.length} available books`,
-      )
+      console.log(`=== FILTERING RESULTS ===`)
+      console.log(`Total books: ${allBooks.length}`)
+      console.log(`Available books: ${availableBooks.length}`)
+      console.log(`Exchangeable books: ${exchangeableBooks.length}`)
 
       if (exchangeableBooks.length > 0) {
         setMyBooks(exchangeableBooks)
-        if (
-          error === "You don't have any books available for exchange. Please add a book first." ||
-          error === "You don't have any available books listed. Please add a book first."
-        ) {
-          setError(null)
-        }
+        setError(null)
+        console.log("Exchangeable books set successfully")
       } else {
         setMyBooks([])
 
-        // Show helpful message about how to make books exchangeable
-        const nonExchangeableBooks = allUserBooks.filter((book) => {
-          const listingType = (book.listing_type || "").toLowerCase().trim()
-          return !listingType.includes("exchange") && !listingType.includes("swap")
-        })
+        // Provide helpful guidance based on what books they have
+        const unavailableCount = allBooks.length - availableBooks.length
+        const nonExchangeableCount = availableBooks.length - exchangeableBooks.length
 
-        if (nonExchangeableBooks.length > 0) {
-          setError(
-            `You have ${nonExchangeableBooks.length} book(s) but none are listed for exchange. Please edit your books and change the listing type to "Exchange" or "Swap".`,
-          )
+        let errorMessage = ""
+        if (unavailableCount > 0 && nonExchangeableCount > 0) {
+          errorMessage = `You have ${allBooks.length} book(s), but ${unavailableCount} are not available and ${nonExchangeableCount} are not listed for exchange/swap. Please edit your books to make them available and change listing type to "Exchange" or "Swap".`
+        } else if (unavailableCount > 0) {
+          errorMessage = `You have ${unavailableCount} book(s) that are not available. Please change their status to "Available" to use them for swapping.`
+        } else if (nonExchangeableCount > 0) {
+          errorMessage = `You have ${nonExchangeableCount} available book(s) but they are not listed for exchange/swap. Please change their listing type to "Exchange" or "Swap".`
         } else {
-          setError(
-            "You don't have any books available for exchange. Please add a book with listing type 'Exchange' or 'Swap'.",
-          )
+          errorMessage = "You don't have any books available for exchange. Please add a book first."
         }
+
+        console.log("Setting error:", errorMessage)
+        setError(errorMessage)
       }
     } catch (err: any) {
-      console.error("fetchMyBooks: Unexpected exception:", err)
+      console.error("=== EXCEPTION IN FETCH MY BOOKS ===")
+      console.error("Error:", err)
+      console.error("Stack:", err.stack)
       setError("An unexpected error occurred while loading your books.")
       setMyBooks([])
+      setAllMyBooks([])
       toast({
         title: "Error Loading Books",
         description: "An unexpected issue occurred while trying to load your books for exchange.",
@@ -201,7 +244,6 @@ export default function SwapRequestPage() {
       return
     }
 
-    // Find the selected book to verify it's valid
     const selectedBook = myBooks.find((b) => b.id === selectedBookId)
     if (selectedBook) {
       console.log("Selected book details:", {
@@ -235,7 +277,6 @@ export default function SwapRequestPage() {
           duration: 5000,
         })
 
-        // Wait a bit for the toast to be visible, then redirect
         setTimeout(() => {
           console.log("Redirecting to /dashboard/swaps")
           router.push("/dashboard/swaps")
@@ -270,7 +311,6 @@ export default function SwapRequestPage() {
     setSelectedBookId(bookIdToSelect)
     console.log("New selectedBookId set to:", bookIdToSelect)
 
-    // Find and log the selected book details
     const selectedBook = myBooks.find((b) => b.id === bookIdToSelect)
     if (selectedBook) {
       console.log("Selected book details:", {
@@ -280,7 +320,6 @@ export default function SwapRequestPage() {
       })
     }
 
-    // Show toast to confirm selection
     toast({
       title: "Book Selected",
       description: "Click 'Request Swap' to send your request",
@@ -319,30 +358,65 @@ export default function SwapRequestPage() {
               </h1>
 
               {error ? (
-                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6 flex items-start">
-                  <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-medium">Unable to proceed with swap</p>
-                    <p className="text-sm mt-1">{error}</p>
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-transparent"
-                        onClick={() => router.push("/dashboard/books/add")}
-                      >
-                        Add a Book
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="bg-transparent"
-                        onClick={() => router.push("/dashboard/books")}
-                      >
-                        View My Books
-                      </Button>
+                <div className="space-y-4 mb-6">
+                  <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md flex items-start">
+                    <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-medium">Unable to proceed with swap</p>
+                      <p className="text-sm mt-1">{error}</p>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-transparent"
+                          onClick={() => router.push("/dashboard/books/add")}
+                        >
+                          Add a Book
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-transparent"
+                          onClick={() => router.push("/dashboard/books")}
+                        >
+                          View My Books
+                        </Button>
+                      </div>
                     </div>
                   </div>
+
+                  {allMyBooks.length > 0 && (
+                    <div className="bg-blue-50 border border-blue-200 text-blue-700 p-4 rounded-md">
+                      <div className="flex items-start">
+                        <Info className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-medium mb-2">Your Books Summary:</p>
+                          <ul className="text-sm space-y-1">
+                            <li>• Total books: {allMyBooks.length}</li>
+                            <li>
+                              • Available for swap:{" "}
+                              {
+                                allMyBooks.filter((b) => {
+                                  const listingType = (b.listing_type || "").toLowerCase()
+                                  return (
+                                    b.status === "available" &&
+                                    (listingType.includes("exchange") || listingType.includes("swap"))
+                                  )
+                                }).length
+                              }
+                            </li>
+                          </ul>
+                          <div className="mt-3">
+                            <p className="text-sm font-medium mb-2">To make a book swappable:</p>
+                            <ol className="text-sm space-y-1 ml-4 list-decimal">
+                              <li>Status must be "Available"</li>
+                              <li>Listing Type must be "Exchange" or "Swap"</li>
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : loading ? (
                 <div className="flex flex-col items-center justify-center py-12">
@@ -352,7 +426,6 @@ export default function SwapRequestPage() {
               ) : (
                 <form onSubmit={handleSubmit}>
                   <div className="space-y-8">
-                    {/* Book you want section */}
                     <div>
                       <h2 className="text-lg font-medium mb-4">Book You Want</h2>
                       <Card>
@@ -372,7 +445,7 @@ export default function SwapRequestPage() {
                               ) : (
                                 <div className="flex w-24 h-36 flex-col items-center justify-center rounded-md border border-dashed border-gray-200 p-2">
                                   <BookOpen className="h-8 w-8 text-gray-400" />
-                                  <p className="text-xs text-gray-500">No cover</p>
+                                  <p className="text-xs text-gray-500 mt-1">No cover</p>
                                 </div>
                               )}
                             </div>
@@ -392,14 +465,14 @@ export default function SwapRequestPage() {
                       </Card>
                     </div>
 
-                    {/* Book you're offering section */}
                     <div>
                       <h2 className="text-lg font-medium mb-4">Book You're Offering</h2>
                       {myBooks.length === 0 ? (
                         <div className="bg-amber-50 border border-amber-200 text-amber-700 p-4 rounded-md">
                           <p className="font-medium">No books available for exchange</p>
                           <p className="text-sm mt-1">
-                            You need books with listing type "Exchange" or "Swap" to make swap requests.
+                            You need books with listing type "Exchange" or "Swap" and status "Available" to make swap
+                            requests.
                           </p>
                           <div className="flex gap-2 mt-3">
                             <Button
@@ -494,7 +567,6 @@ export default function SwapRequestPage() {
                       )}
                     </div>
 
-                    {/* Message section */}
                     <div>
                       <Label htmlFor="message" className="text-lg font-medium block mb-2">
                         Message to Owner (Optional)
@@ -512,7 +584,6 @@ export default function SwapRequestPage() {
                       </p>
                     </div>
 
-                    {/* Submit button */}
                     <div className="flex flex-col sm:flex-row gap-4 justify-end">
                       <Button
                         type="button"
