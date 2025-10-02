@@ -37,7 +37,7 @@ export function Footer() {
                 Contact
               </Link>
               <Link
-                href="#"
+                href="/faq"
                 className="text-sm text-gray-500 hover:text-emerald-600 transition-colors dark:text-gray-400 dark:hover:text-emerald-400"
               >
                 FAQ
