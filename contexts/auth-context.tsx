@@ -4,7 +4,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
-import type { User, Session } from "@supabase/supabase-js"
+import type { User, Session, AuthChangeEvent } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/database.types"
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
@@ -35,9 +35,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const isInitialized = useRef(false)
+  const profileCache = useRef<Map<string, Profile>>(new Map())
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
+      // Check cache first
+      if (profileCache.current.has(userId)) {
+        const cachedProfile = profileCache.current.get(userId)!
+        setProfile(cachedProfile)
+        return cachedProfile
+      }
+
       const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
       if (error && error.code !== "PGRST116") {
@@ -45,7 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null
       }
 
-      setProfile(data)
+      if (data) {
+        profileCache.current.set(userId, data)
+        setProfile(data)
+      }
+
       return data
     } catch (error) {
       console.error("Exception fetching profile:", error)
@@ -55,40 +67,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (user) {
+      // Clear cache for this user
+      profileCache.current.delete(user.id)
       return await fetchProfile(user.id)
     }
     return null
   }, [user, fetchProfile])
 
   const handleAuthStateChange = useCallback(
-    async (event: string, newSession: Session | null) => {
-      console.log("Auth state change:", event)
+    async (event: AuthChangeEvent, newSession: Session | null) => {
+      console.log("Auth state change:", event, "Has session:", !!newSession)
 
       setSession(newSession)
       setUser(newSession?.user || null)
 
       if (newSession?.user) {
-        // Only fetch profile if we don't have it or if it's a different user
-        if (!profile || profile.id !== newSession.user.id) {
-          await fetchProfile(newSession.user.id)
-        }
+        // Fetch profile without blocking
+        fetchProfile(newSession.user.id)
 
-        // Redirect to dashboard only on SIGNED_IN event
-        if (event === "SIGNED_IN" && (pathname === "/login" || pathname === "/signup")) {
-          router.replace("/dashboard")
+        // Only redirect on specific auth events
+        if (event === "SIGNED_IN") {
+          const isAuthPage = pathname === "/login" || pathname === "/signup"
+          if (isAuthPage) {
+            console.log("Redirecting to dashboard after sign in")
+            setTimeout(() => router.replace("/dashboard"), 100)
+          }
         }
       } else {
         setProfile(null)
+        profileCache.current.clear()
 
-        // Redirect to home only on SIGNED_OUT event
+        // Redirect to home on sign out if on protected route
         if (event === "SIGNED_OUT" && pathname?.startsWith("/dashboard")) {
-          router.replace("/")
+          console.log("Redirecting to home after sign out")
+          setTimeout(() => router.replace("/"), 100)
         }
       }
 
       setIsLoading(false)
     },
-    [fetchProfile, pathname, router, profile],
+    [fetchProfile, pathname, router],
   )
 
   useEffect(() => {
@@ -96,52 +114,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isInitialized.current) return
 
     let mounted = true
+    isInitialized.current = true
 
     const initializeAuth = async () => {
       try {
-        // Get initial session with a timeout
-        const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Session fetch timeout")), 5000),
-        )
+        console.log("Initializing auth...")
 
-        const {
-          data: { session },
-          error,
-        } = (await Promise.race([sessionPromise, timeoutPromise])) as any
+        // Get session with timeout
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000))
+
+        const sessionPromise = supabase.auth.getSession()
+
+        const result = await Promise.race([sessionPromise, timeoutPromise])
+        const { data, error } = result as any
 
         if (error) {
           console.error("Error getting session:", error)
-          if (mounted) {
-            setIsLoading(false)
-          }
+          if (mounted) setIsLoading(false)
           return
         }
 
         if (mounted) {
-          setSession(session)
-          setUser(session?.user || null)
+          const currentSession = data.session
+          console.log("Initial session found:", !!currentSession)
 
-          // Fetch profile in parallel without blocking
-          if (session?.user) {
-            fetchProfile(session.user.id).catch(console.error)
+          setSession(currentSession)
+          setUser(currentSession?.user || null)
+
+          // Fetch profile without blocking
+          if (currentSession?.user) {
+            fetchProfile(currentSession.user.id)
           }
 
           setIsLoading(false)
-          isInitialized.current = true
         }
       } catch (error) {
         console.error("Error initializing auth:", error)
-        if (mounted) {
-          setIsLoading(false)
-          isInitialized.current = true
-        }
+        if (mounted) setIsLoading(false)
       }
     }
 
     initializeAuth()
 
-    // Listen for auth changes
+    // Set up auth state listener
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(handleAuthStateChange)
@@ -154,26 +169,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
+      console.log("Signing out...")
       setIsLoading(true)
 
-      // Clear state immediately for better UX
+      // Clear state immediately
       setUser(null)
       setProfile(null)
       setSession(null)
+      profileCache.current.clear()
 
       // Sign out from Supabase
       await supabase.auth.signOut()
 
-      // Clear cached data
+      // Clear storage
       if (typeof window !== "undefined") {
         localStorage.removeItem("supabase.auth.token")
         sessionStorage.clear()
       }
 
-      // Redirect to home page
+      // Redirect
       router.replace("/")
     } catch (error) {
-      console.error("Exception during sign out:", error)
+      console.error("Error signing out:", error)
     } finally {
       setIsLoading(false)
     }

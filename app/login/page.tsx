@@ -22,11 +22,49 @@ export default function LoginPage() {
   const [otp, setOtp] = useState("")
   const [showOtpInput, setShowOtpInput] = useState(false)
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
+  const [isProcessingCallback, setIsProcessingCallback] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isLoading: authLoading } = useAuth()
 
-  // Check for error in URL params only once
+  // Handle OAuth callback from hash fragment
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      const hash = window.location.hash
+
+      if (hash && hash.includes("access_token")) {
+        setIsProcessingCallback(true)
+        console.log("Processing OAuth callback from hash...")
+
+        try {
+          // Let Supabase handle the session from hash
+          const { data, error } = await supabase.auth.getSession()
+
+          if (error) {
+            console.error("Error processing OAuth callback:", error)
+            setErrorMessage("Authentication failed. Please try again.")
+            setIsProcessingCallback(false)
+            return
+          }
+
+          if (data.session) {
+            console.log("Session established, redirecting to dashboard...")
+            // Clear the hash from URL
+            window.history.replaceState(null, "", window.location.pathname)
+            router.replace("/dashboard")
+          }
+        } catch (error) {
+          console.error("Exception processing OAuth callback:", error)
+          setErrorMessage("Authentication failed. Please try again.")
+          setIsProcessingCallback(false)
+        }
+      }
+    }
+
+    handleOAuthCallback()
+  }, [router])
+
+  // Check for error in URL params
   useEffect(() => {
     const error = searchParams.get("error")
     if (error) {
@@ -34,16 +72,16 @@ export default function LoginPage() {
     }
   }, [searchParams])
 
-  // Redirect if already logged in - optimized to run only once after auth is loaded
+  // Redirect if already logged in
   useEffect(() => {
-    if (!authLoading && !hasCheckedAuth) {
+    if (!authLoading && !hasCheckedAuth && !isProcessingCallback) {
       setHasCheckedAuth(true)
       if (user) {
         console.log("User already logged in, redirecting to dashboard")
         router.replace("/dashboard")
       }
     }
-  }, [user, authLoading, hasCheckedAuth, router])
+  }, [user, authLoading, hasCheckedAuth, isProcessingCallback, router])
 
   const validateMalaysianPhone = useCallback(
     (phone: string): { isValid: boolean; formatted: string; error?: string } => {
@@ -113,18 +151,19 @@ export default function LoginPage() {
     setErrorMessage("")
 
     try {
+      console.log("Initiating Google sign in...")
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
+          redirectTo: `${window.location.origin}/login`,
+          skipBrowserRedirect: false,
         },
       })
 
       if (error) throw error
+
+      console.log("OAuth redirect initiated")
     } catch (error: any) {
       console.error("Login error:", error)
       setErrorMessage(error.message || "Failed to sign in with Google")
@@ -204,7 +243,23 @@ export default function LoginPage() {
     setSuccessMessage("")
   }
 
-  // Show minimal loading state while checking auth
+  // Show loading while processing OAuth callback
+  if (isProcessingCallback) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            <p className="text-sm text-gray-500">Completing sign in...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  // Show loading while checking auth
   if (authLoading && !hasCheckedAuth) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -220,7 +275,7 @@ export default function LoginPage() {
     )
   }
 
-  // Don't render login form if user is logged in
+  // Show redirect message if user is logged in
   if (user) {
     return (
       <div className="min-h-screen flex flex-col">

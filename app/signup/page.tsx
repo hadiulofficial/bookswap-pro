@@ -2,107 +2,63 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
+import { Loader2 } from "lucide-react"
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
-  const [successMessage, setSuccessMessage] = useState("")
-  const [phoneNumber, setPhoneNumber] = useState("")
-  const [otp, setOtp] = useState("")
-  const [showOtpInput, setShowOtpInput] = useState(false)
+  const [isProcessingCallback, setIsProcessingCallback] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { user, isLoading: authLoading } = useAuth()
 
-  // Check for error in URL params
+  // Handle OAuth callback from hash fragment
   useEffect(() => {
-    const error = searchParams.get("error")
-    if (error) {
-      setErrorMessage(decodeURIComponent(error))
+    const handleOAuthCallback = async () => {
+      const hash = window.location.hash
+
+      if (hash && hash.includes("access_token")) {
+        setIsProcessingCallback(true)
+        console.log("Processing OAuth callback from hash...")
+
+        try {
+          const { data, error } = await supabase.auth.getSession()
+
+          if (error) {
+            console.error("Error processing OAuth callback:", error)
+            setErrorMessage("Authentication failed. Please try again.")
+            setIsProcessingCallback(false)
+            return
+          }
+
+          if (data.session) {
+            console.log("Session established, redirecting to dashboard...")
+            window.history.replaceState(null, "", window.location.pathname)
+            router.replace("/dashboard")
+          }
+        } catch (error) {
+          console.error("Exception processing OAuth callback:", error)
+          setErrorMessage("Authentication failed. Please try again.")
+          setIsProcessingCallback(false)
+        }
+      }
     }
-  }, [searchParams])
+
+    handleOAuthCallback()
+  }, [router])
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!authLoading && user) {
-      console.log("User already logged in, redirecting to dashboard")
-      router.push("/dashboard")
+    if (!authLoading && !isProcessingCallback && user) {
+      router.replace("/dashboard")
     }
-  }, [user, authLoading, router])
-
-  const validateMalaysianPhone = (phone: string): { isValid: boolean; formatted: string; error?: string } => {
-    // Remove all non-digits
-    const cleanPhone = phone.replace(/\D/g, "")
-
-    // Check if it starts with 60 (Malaysia country code)
-    if (cleanPhone.startsWith("60")) {
-      // Format: 60 + 9-11 digits
-      if (cleanPhone.length >= 11 && cleanPhone.length <= 13) {
-        return { isValid: true, formatted: `+${cleanPhone}` }
-      } else {
-        return {
-          isValid: false,
-          formatted: "",
-          error: "Malaysian phone number should be 9-11 digits after country code (+60)",
-        }
-      }
-    }
-
-    // Check if it starts with 0 (local Malaysian format)
-    if (cleanPhone.startsWith("0")) {
-      // Remove leading 0 and add country code
-      const withoutZero = cleanPhone.substring(1)
-      if (withoutZero.length >= 8 && withoutZero.length <= 10) {
-        return { isValid: true, formatted: `+60${withoutZero}` }
-      } else {
-        return {
-          isValid: false,
-          formatted: "",
-          error: "Malaysian phone number should be 8-10 digits after removing leading 0",
-        }
-      }
-    }
-
-    // Check if it's just the number without country code or leading 0
-    if (cleanPhone.length >= 8 && cleanPhone.length <= 10) {
-      return { isValid: true, formatted: `+60${cleanPhone}` }
-    }
-
-    return {
-      isValid: false,
-      formatted: "",
-      error: "Please enter a valid Malaysian phone number (e.g., 0123456789, 60123456789, or 123456789)",
-    }
-  }
-
-  const formatPhoneDisplay = (phone: string): string => {
-    const cleanPhone = phone.replace(/\D/g, "")
-
-    if (cleanPhone.startsWith("60")) {
-      const number = cleanPhone.substring(2)
-      if (number.length >= 8) {
-        return `+60 ${number.substring(0, 2)} ${number.substring(2, 5)} ${number.substring(5)}`
-      }
-    }
-
-    if (cleanPhone.startsWith("0")) {
-      if (cleanPhone.length >= 9) {
-        return `${cleanPhone.substring(0, 3)} ${cleanPhone.substring(3, 6)} ${cleanPhone.substring(6)}`
-      }
-    }
-
-    return phone
-  }
+  }, [user, authLoading, isProcessingCallback, router])
 
   const handleGoogleSignUp = async () => {
     if (isLoading) return
@@ -113,20 +69,15 @@ export default function SignupPage() {
     try {
       console.log("Initiating Google sign up...")
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
+          redirectTo: `${window.location.origin}/signup`,
+          skipBrowserRedirect: false,
         },
       })
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
 
       console.log("OAuth redirect initiated")
     } catch (error: any) {
@@ -136,103 +87,52 @@ export default function SignupPage() {
     }
   }
 
-  const handlePhoneSignUp = async () => {
-    if (isLoading || !phoneNumber) return
-
-    setIsLoading(true)
-    setErrorMessage("")
-    setSuccessMessage("")
-
-    try {
-      const validation = validateMalaysianPhone(phoneNumber)
-
-      if (!validation.isValid) {
-        throw new Error(validation.error || "Invalid phone number format")
-      }
-
-      console.log("Sending OTP to:", validation.formatted)
-
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: validation.formatted,
-      })
-
-      if (error) {
-        if (error.message.includes("Unsupported phone provider") || error.message.includes("SMS")) {
-          throw new Error(
-            "SMS service is not available for Malaysian numbers on the free tier. Please use Google sign-up or contact support.",
-          )
-        }
-        throw error
-      }
-
-      setShowOtpInput(true)
-      setSuccessMessage(`OTP sent to ${formatPhoneDisplay(phoneNumber)}. Please check your messages.`)
-    } catch (error: any) {
-      console.error("Phone sign up error:", error)
-      setErrorMessage(error.message || "Failed to send OTP")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleOtpVerification = async () => {
-    if (isLoading || !otp || !phoneNumber) return
-
-    setIsLoading(true)
-    setErrorMessage("")
-
-    try {
-      const validation = validateMalaysianPhone(phoneNumber)
-
-      if (!validation.isValid) {
-        throw new Error(validation.error || "Invalid phone number format")
-      }
-
-      console.log("Verifying OTP for:", validation.formatted)
-
-      const { error } = await supabase.auth.verifyOtp({
-        phone: validation.formatted,
-        token: otp,
-        type: "sms",
-      })
-
-      if (error) {
-        throw error
-      }
-
-      console.log("OTP verified successfully")
-      // The auth context will handle the redirect
-    } catch (error: any) {
-      console.error("OTP verification error:", error)
-      setErrorMessage(error.message || "Failed to verify OTP")
-      setIsLoading(false)
-    }
-  }
-
-  const resetPhoneAuth = () => {
-    setShowOtpInput(false)
-    setOtp("")
-    setPhoneNumber("")
-    setErrorMessage("")
-    setSuccessMessage("")
-  }
-
-  // Show loading if auth is still initializing
-  if (authLoading) {
+  // Show loading while processing callback
+  if (isProcessingCallback) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+        <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            <p className="text-sm text-gray-500">Completing sign up...</p>
+          </div>
         </main>
         <Footer />
       </div>
     )
   }
 
-  // Don't render if user is already logged in (will redirect)
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            <p className="text-sm text-gray-500">Loading...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  // Show redirect message if already logged in
   if (user) {
-    return null
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -242,40 +142,34 @@ export default function SignupPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
             <div className="space-y-2 max-w-[600px]">
-              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Join BookSwap</h1>
+              <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Create Your Account</h1>
               <p className="text-gray-500 md:text-xl dark:text-gray-400">
-                Create an account to start swapping books with readers around the world.
+                Join BookSwap today and start sharing your favorite books with the community.
               </p>
             </div>
           </div>
 
           <div className="max-w-md mx-auto">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 md:p-8">
-              <Tabs defaultValue="google" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="google">Google</TabsTrigger>
-                  <TabsTrigger value="phone">Phone (MY)</TabsTrigger>
-                </TabsList>
+              <div className="space-y-6">
+                {errorMessage && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{errorMessage}</AlertDescription>
+                  </Alert>
+                )}
 
-                <div className="mt-6 space-y-4">
-                  {errorMessage && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{errorMessage}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  {successMessage && (
-                    <Alert>
-                      <AlertDescription>{successMessage}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <TabsContent value="google" className="space-y-4">
-                    <Button
-                      onClick={handleGoogleSignUp}
-                      disabled={isLoading}
-                      className="w-full flex items-center justify-center gap-2 py-6"
-                    >
+                <Button
+                  onClick={handleGoogleSignUp}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 py-6"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Signing up...
+                    </>
+                  ) : (
+                    <>
                       <svg className="h-5 w-5" viewBox="0 0 24 24">
                         <path
                           d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -294,86 +188,10 @@ export default function SignupPage() {
                           fill="#EA4335"
                         />
                       </svg>
-                      {isLoading ? "Signing up..." : "Sign up with Google"}
-                    </Button>
-                  </TabsContent>
-
-                  <TabsContent value="phone" className="space-y-4">
-                    {!showOtpInput ? (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="phone">Malaysian Phone Number</Label>
-                          <Input
-                            id="phone"
-                            type="tel"
-                            placeholder="0123456789 or 60123456789"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                            disabled={isLoading}
-                          />
-                          <p className="text-xs text-gray-500">
-                            Enter Malaysian number: 0123456789, 60123456789, or 123456789
-                          </p>
-                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                            <p className="text-xs text-yellow-800">
-                              <strong>Note:</strong> SMS service may not be available for Malaysian numbers on the free
-                              tier. We recommend using Google sign-up for the best experience.
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          onClick={handlePhoneSignUp}
-                          disabled={isLoading || !phoneNumber}
-                          className="w-full py-6"
-                        >
-                          {isLoading ? "Sending OTP..." : "Send Verification Code"}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="otp">Verification Code</Label>
-                          <Input
-                            id="otp"
-                            type="text"
-                            placeholder="123456"
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            disabled={isLoading}
-                            maxLength={6}
-                          />
-                          <p className="text-xs text-gray-500">
-                            Enter the 6-digit code sent to {formatPhoneDisplay(phoneNumber)}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Button onClick={handleOtpVerification} disabled={isLoading || !otp} className="w-full py-6">
-                            {isLoading ? "Verifying..." : "Verify Code"}
-                          </Button>
-                          <Button
-                            onClick={resetPhoneAuth}
-                            variant="outline"
-                            disabled={isLoading}
-                            className="w-full bg-transparent"
-                          >
-                            Use Different Number
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </TabsContent>
-                </div>
-              </Tabs>
-
-              <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                By signing up, you agree to our{" "}
-                <Link href="/terms" className="text-emerald-600 hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-emerald-600 hover:underline">
-                  Privacy Policy
-                </Link>
+                      Sign up with Google
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
             <div className="mt-6 text-center">
