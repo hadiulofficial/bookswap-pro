@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { randomUUID } from "crypto"
 
 export async function requestBookSwap(userId: string, bookId: string, offeredBookId: string, message?: string) {
   try {
@@ -140,8 +141,13 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
 
     console.log("No existing swap request found, proceeding with creation")
 
-    // Create the swap request
+    // Generate a UUID for the swap request
+    const swapId = randomUUID()
+    console.log("Generated swap ID:", swapId)
+
+    // Create the swap request with explicit ID
     const swapData = {
+      id: swapId,
       requester_id: userId,
       owner_id: book.owner_id,
       requested_book_id: bookId,
@@ -154,11 +160,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
 
     console.log("Creating swap request with data:", swapData)
 
-    const { data: insertedSwap, error: insertError } = await supabase
-      .from("book_swaps")
-      .insert(swapData)
-      .select("id")
-      .single()
+    const { data: insertedSwap, error: insertError } = await supabase.from("book_swaps").insert(swapData).select("id")
 
     if (insertError) {
       console.error("Error creating swap request:", insertError)
@@ -174,23 +176,17 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
       }
     }
 
-    if (!insertedSwap) {
-      console.error("Swap created but no ID returned")
-      return {
-        success: false,
-        error: "Failed to create swap request",
-      }
-    }
-
-    console.log("Swap request created successfully with ID:", insertedSwap.id)
+    console.log("Swap request created successfully. Inserted data:", insertedSwap)
 
     // Create a notification for the book owner
+    const notificationId = randomUUID()
     const notificationData = {
+      id: notificationId,
       user_id: book.owner_id,
       title: "New Swap Request",
       message: `Someone wants to swap "${offeredBook.title}" with your book "${book.title}"`,
       type: "swap_request" as const,
-      related_id: insertedSwap.id,
+      related_id: swapId,
       read: false,
       created_at: new Date().toISOString(),
     }
@@ -201,6 +197,11 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
 
     if (notificationError) {
       console.error("Error creating notification:", notificationError)
+      console.error("Notification error details:", {
+        code: notificationError.code,
+        message: notificationError.message,
+        details: notificationError.details,
+      })
       // Don't fail the swap request if notification fails
     } else {
       console.log("Notification created successfully")
@@ -214,7 +215,7 @@ export async function requestBookSwap(userId: string, bookId: string, offeredBoo
     console.log("=== REQUEST BOOK SWAP COMPLETED SUCCESSFULLY ===")
     return {
       success: true,
-      swapId: insertedSwap.id,
+      swapId: swapId,
     }
   } catch (error: any) {
     console.error("=== EXCEPTION IN REQUEST BOOK SWAP ===")
@@ -300,7 +301,9 @@ export async function updateSwapStatus(swapId: string, status: "approved" | "rej
     }
 
     // Create a notification for the requester
+    const notificationId = randomUUID()
     await supabase.from("notifications").insert({
+      id: notificationId,
       user_id: swap.requester_id,
       title: status === "approved" ? "Swap Request Approved" : "Swap Request Rejected",
       message:
