@@ -25,6 +25,7 @@ import {
   DollarSign,
   Gift,
   BarChart3,
+  MoreVertical,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -155,13 +156,13 @@ export default function BooksPage() {
   const getListingTypeIcon = (listingType: string) => {
     switch (listingType.toLowerCase()) {
       case "sale":
-        return <DollarSign className="h-4 w-4" />
+        return <DollarSign className="h-3 w-3" />
       case "donation":
-        return <Gift className="h-4 w-4" />
+        return <Gift className="h-3 w-3" />
       case "swap":
-        return <RefreshCw className="h-4 w-4" />
+        return <RefreshCw className="h-3 w-3" />
       default:
-        return <BookOpen className="h-4 w-4" />
+        return <BookOpen className="h-3 w-3" />
     }
   }
 
@@ -207,7 +208,7 @@ export default function BooksPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <DashboardTitle title="My Books" description="Manage your book collection and listings" />
         <Button onClick={() => router.push("/dashboard/books/add")} className="flex items-center gap-2">
@@ -218,26 +219,26 @@ export default function BooksPage() {
 
       {/* Search and Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Filter className="h-4 w-4" />
             Search & Filter
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search books..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-9"
               />
             </div>
 
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
@@ -251,7 +252,7 @@ export default function BooksPage() {
             </Select>
 
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
@@ -265,7 +266,7 @@ export default function BooksPage() {
             </Select>
 
             <Select value={selectedListingType} onValueChange={setSelectedListingType}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -278,6 +279,7 @@ export default function BooksPage() {
 
             <Button
               variant="outline"
+              size="sm"
               onClick={() => {
                 setSearchTerm("")
                 setSelectedCategory("all")
@@ -306,17 +308,17 @@ export default function BooksPage() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <Card key={i}>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <Skeleton className="h-48 w-full rounded-md" />
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-6 w-16" />
-                    <Skeleton className="h-6 w-20" />
+              <CardContent className="p-3">
+                <div className="space-y-3">
+                  <Skeleton className="h-32 w-full rounded-md" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                  <div className="flex gap-1">
+                    <Skeleton className="h-5 w-14" />
+                    <Skeleton className="h-5 w-16" />
                   </div>
                 </div>
               </CardContent>
@@ -330,24 +332,29 @@ export default function BooksPage() {
         <>
           {filteredBooks.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <BookOpen className="h-16 w-16 text-gray-400 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <BookOpen className="h-12 w-12 text-gray-400 mb-3" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {books.length === 0 ? "No books yet" : "No books match your filters"}
                 </h3>
-                <p className="text-gray-500 mb-6 max-w-md">
+                <p className="text-sm text-gray-500 mb-4 max-w-md">
                   {books.length === 0
                     ? "Start building your library by adding your first book to BookSwap."
                     : "Try adjusting your search terms or filters to find what you're looking for."}
                 </p>
                 {books.length === 0 ? (
-                  <Button onClick={() => router.push("/dashboard/books/add")} className="flex items-center gap-2">
+                  <Button
+                    onClick={() => router.push("/dashboard/books/add")}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
                     <Plus className="h-4 w-4" />
                     Add Your First Book
                   </Button>
                 ) : (
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => {
                       setSearchTerm("")
                       setSelectedCategory("all")
@@ -361,41 +368,39 @@ export default function BooksPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {filteredBooks.map((book) => (
-                <Card key={book.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="aspect-[3/4] relative bg-gray-100">
+                <Card key={book.id} className="overflow-hidden hover:shadow-md transition-shadow group">
+                  <div className="aspect-[2/3] relative bg-gray-100">
                     {book.cover_image ? (
                       <Image
                         src={book.cover_image || "/placeholder.svg"}
                         alt={book.title}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 20vw"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <BookOpen className="h-16 w-16 text-gray-400" />
+                        <BookOpen className="h-10 w-10 text-gray-400" />
                       </div>
                     )}
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="secondary" size="sm" className="h-8 w-8 p-0">
+                          <Button variant="secondary" size="sm" className="h-7 w-7 p-0 shadow-md">
                             <span className="sr-only">Open menu</span>
-                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                            </svg>
+                            <MoreVertical className="h-3.5 w-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => router.push(`/books/${book.id}`)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
+                            <Eye className="mr-2 h-3.5 w-3.5" />
+                            <span className="text-sm">View</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => router.push(`/dashboard/books/edit/${book.id}`)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit Book
+                            <Edit className="mr-2 h-3.5 w-3.5" />
+                            <span className="text-sm">Edit</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => handleDeleteBook(book.id)}
@@ -404,13 +409,13 @@ export default function BooksPage() {
                           >
                             {deletingId === book.id ? (
                               <>
-                                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                                Deleting...
+                                <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                <span className="text-sm">Deleting...</span>
                               </>
                             ) : (
                               <>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Book
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                <span className="text-sm">Delete</span>
                               </>
                             )}
                           </DropdownMenuItem>
@@ -419,50 +424,31 @@ export default function BooksPage() {
                     </div>
                   </div>
 
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
+                  <CardContent className="p-3">
+                    <div className="space-y-2">
                       <div>
-                        <h3 className="font-semibold text-lg line-clamp-2">{book.title}</h3>
-                        <p className="text-sm text-gray-600">by {book.author}</p>
+                        <h3 className="font-semibold text-sm line-clamp-1" title={book.title}>
+                          {book.title}
+                        </h3>
+                        <p className="text-xs text-gray-600 line-clamp-1">{book.author}</p>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <Badge className={getStatusColor(book.status)}>{book.status}</Badge>
-                        <Badge variant="outline" className={getListingTypeColor(book.listing_type)}>
-                          <span className="flex items-center gap-1">
+                      <div className="flex flex-wrap gap-1">
+                        <Badge className={`${getStatusColor(book.status)} text-xs px-1.5 py-0`}>{book.status}</Badge>
+                        <Badge
+                          variant="outline"
+                          className={`${getListingTypeColor(book.listing_type)} text-xs px-1.5 py-0`}
+                        >
+                          <span className="flex items-center gap-0.5">
                             {getListingTypeIcon(book.listing_type)}
                             {book.listing_type}
                           </span>
                         </Badge>
                       </div>
 
-                      <div className="space-y-1 text-sm text-gray-600">
-                        <p>Category: {getCategoryName(book.category_id)}</p>
-                        <p>Condition: {book.condition}</p>
+                      <div className="space-y-0.5 text-xs text-gray-600">
+                        <p className="line-clamp-1">{getCategoryName(book.category_id)}</p>
                         {book.price && <p className="font-medium text-green-600">${book.price}</p>}
-                      </div>
-
-                      {book.description && <p className="text-sm text-gray-600 line-clamp-2">{book.description}</p>}
-
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/books/${book.id}`)}
-                          className="flex-1"
-                        >
-                          <Eye className="mr-1 h-4 w-4" />
-                          View
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/books/edit/${book.id}`)}
-                          className="flex-1"
-                        >
-                          <Edit className="mr-1 h-4 w-4" />
-                          Edit
-                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -476,35 +462,35 @@ export default function BooksPage() {
       {/* Summary Stats */}
       {!isLoading && !error && books.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="h-4 w-4" />
               Collection Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-600">{books.length}</div>
-                <div className="text-sm text-gray-600">Total Books</div>
+                <div className="text-xl font-bold text-emerald-600">{books.length}</div>
+                <div className="text-xs text-gray-600">Total Books</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-xl font-bold text-green-600">
                   {books.filter((book) => book.status === "available").length}
                 </div>
-                <div className="text-sm text-gray-600">Available</div>
+                <div className="text-xs text-gray-600">Available</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-xl font-bold text-green-600">
                   {books.filter((book) => book.listing_type === "sale").length}
                 </div>
-                <div className="text-sm text-gray-600">For Sale</div>
+                <div className="text-xs text-gray-600">For Sale</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
+                <div className="text-xl font-bold text-purple-600">
                   {books.filter((book) => book.listing_type === "swap").length}
                 </div>
-                <div className="text-sm text-gray-600">For Swap</div>
+                <div className="text-xs text-gray-600">For Swap</div>
               </div>
             </div>
           </CardContent>
