@@ -24,7 +24,7 @@ export function Navbar() {
             <Link href="/books" className="hover:text-emerald-600 transition-colors">
               Browse
             </Link>
-            <Link href="#features" className="hover:text-emerald-600 transition-colors">
+            <Link href="/features" className="hover:text-emerald-600 transition-colors">
               Features
             </Link>
             <Link href="#how-it-works" className="hover:text-emerald-600 transition-colors">
@@ -45,7 +45,7 @@ export function Navbar() {
               ))}
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="md:hidden">
+                <Button variant="outline" size="icon" className="md:hidden bg-transparent">
                   <Menu className="h-6 w-6" />
                   <span className="sr-only">Toggle navigation menu</span>
                 </Button>
@@ -55,7 +55,7 @@ export function Navbar() {
                   <Link href="/books" className="font-medium hover:text-emerald-600 transition-colors">
                     Browse
                   </Link>
-                  <Link href="#features" className="font-medium hover:text-emerald-600 transition-colors">
+                  <Link href="/features" className="font-medium hover:text-emerald-600 transition-colors">
                     Features
                   </Link>
                   <Link href="#how-it-works" className="font-medium hover:text-emerald-600 transition-colors">
