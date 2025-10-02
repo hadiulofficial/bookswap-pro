@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState, useCallback } from "react"
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
 import type { User, Session } from "@supabase/supabase-js"
@@ -34,10 +34,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
+  const isInitialized = useRef(false)
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      console.log("Fetching profile for user:", userId)
       const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
       if (error && error.code !== "PGRST116") {
@@ -45,7 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null
       }
 
-      console.log("Profile data:", data)
       setProfile(data)
       return data
     } catch (error) {
@@ -62,69 +61,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchProfile])
 
   const handleAuthStateChange = useCallback(
-    async (event: string, session: Session | null) => {
-      console.log("Auth state change:", event, !!session)
+    async (event: string, newSession: Session | null) => {
+      console.log("Auth state change:", event)
 
-      setSession(session)
-      setUser(session?.user || null)
+      setSession(newSession)
+      setUser(newSession?.user || null)
 
-      if (session?.user) {
-        await fetchProfile(session.user.id)
+      if (newSession?.user) {
+        // Only fetch profile if we don't have it or if it's a different user
+        if (!profile || profile.id !== newSession.user.id) {
+          await fetchProfile(newSession.user.id)
+        }
 
-        // If user just signed in and is on login/signup page, redirect to dashboard
+        // Redirect to dashboard only on SIGNED_IN event
         if (event === "SIGNED_IN" && (pathname === "/login" || pathname === "/signup")) {
-          console.log("Redirecting to dashboard after sign in")
-          router.push("/dashboard")
+          router.replace("/dashboard")
         }
       } else {
         setProfile(null)
 
-        // If user signed out and is on a protected route, redirect to home
+        // Redirect to home only on SIGNED_OUT event
         if (event === "SIGNED_OUT" && pathname?.startsWith("/dashboard")) {
-          console.log("Redirecting to home after sign out")
-          router.push("/")
+          router.replace("/")
         }
       }
 
       setIsLoading(false)
     },
-    [fetchProfile, pathname, router],
+    [fetchProfile, pathname, router, profile],
   )
 
   useEffect(() => {
+    // Prevent multiple initializations
+    if (isInitialized.current) return
+
     let mounted = true
 
     const initializeAuth = async () => {
       try {
-        // Get initial session
+        // Get initial session with a timeout
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Session fetch timeout")), 5000),
+        )
+
         const {
           data: { session },
           error,
-        } = await supabase.auth.getSession()
+        } = (await Promise.race([sessionPromise, timeoutPromise])) as any
 
         if (error) {
           console.error("Error getting session:", error)
-          setIsLoading(false)
+          if (mounted) {
+            setIsLoading(false)
+          }
           return
         }
 
         if (mounted) {
-          console.log("Initial session:", !!session)
           setSession(session)
           setUser(session?.user || null)
 
+          // Fetch profile in parallel without blocking
           if (session?.user) {
-            await fetchProfile(session.user.id)
-          } else {
-            setProfile(null)
+            fetchProfile(session.user.id).catch(console.error)
           }
 
           setIsLoading(false)
+          isInitialized.current = true
         }
       } catch (error) {
         console.error("Error initializing auth:", error)
         if (mounted) {
           setIsLoading(false)
+          isInitialized.current = true
         }
       }
     }
@@ -144,29 +154,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      console.log("Signing out...")
       setIsLoading(true)
 
-      // Clear state immediately
+      // Clear state immediately for better UX
       setUser(null)
       setProfile(null)
       setSession(null)
 
       // Sign out from Supabase
-      const { error } = await supabase.auth.signOut()
+      await supabase.auth.signOut()
 
-      if (error) {
-        console.error("Error signing out:", error)
-      }
-
-      // Clear any cached data
+      // Clear cached data
       if (typeof window !== "undefined") {
         localStorage.removeItem("supabase.auth.token")
         sessionStorage.clear()
       }
 
       // Redirect to home page
-      router.push("/")
+      router.replace("/")
     } catch (error) {
       console.error("Exception during sign out:", error)
     } finally {

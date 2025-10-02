@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { supabase } from "@/lib/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
+import { Loader2 } from "lucide-react"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -20,11 +21,12 @@ export default function LoginPage() {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
   const [showOtpInput, setShowOtpInput] = useState(false)
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isLoading: authLoading } = useAuth()
 
-  // Check for error in URL params
+  // Check for error in URL params only once
   useEffect(() => {
     const error = searchParams.get("error")
     if (error) {
@@ -32,60 +34,60 @@ export default function LoginPage() {
     }
   }, [searchParams])
 
-  // Redirect if already logged in
+  // Redirect if already logged in - optimized to run only once after auth is loaded
   useEffect(() => {
-    if (!authLoading && user) {
-      console.log("User already logged in, redirecting to dashboard")
-      router.push("/dashboard")
-    }
-  }, [user, authLoading, router])
-
-  const validateMalaysianPhone = (phone: string): { isValid: boolean; formatted: string; error?: string } => {
-    // Remove all non-digits
-    const cleanPhone = phone.replace(/\D/g, "")
-
-    // Check if it starts with 60 (Malaysia country code)
-    if (cleanPhone.startsWith("60")) {
-      // Format: 60 + 9-11 digits
-      if (cleanPhone.length >= 11 && cleanPhone.length <= 13) {
-        return { isValid: true, formatted: `+${cleanPhone}` }
-      } else {
-        return {
-          isValid: false,
-          formatted: "",
-          error: "Malaysian phone number should be 9-11 digits after country code (+60)",
-        }
+    if (!authLoading && !hasCheckedAuth) {
+      setHasCheckedAuth(true)
+      if (user) {
+        console.log("User already logged in, redirecting to dashboard")
+        router.replace("/dashboard")
       }
     }
+  }, [user, authLoading, hasCheckedAuth, router])
 
-    // Check if it starts with 0 (local Malaysian format)
-    if (cleanPhone.startsWith("0")) {
-      // Remove leading 0 and add country code
-      const withoutZero = cleanPhone.substring(1)
-      if (withoutZero.length >= 8 && withoutZero.length <= 10) {
-        return { isValid: true, formatted: `+60${withoutZero}` }
-      } else {
-        return {
-          isValid: false,
-          formatted: "",
-          error: "Malaysian phone number should be 8-10 digits after removing leading 0",
+  const validateMalaysianPhone = useCallback(
+    (phone: string): { isValid: boolean; formatted: string; error?: string } => {
+      const cleanPhone = phone.replace(/\D/g, "")
+
+      if (cleanPhone.startsWith("60")) {
+        if (cleanPhone.length >= 11 && cleanPhone.length <= 13) {
+          return { isValid: true, formatted: `+${cleanPhone}` }
+        } else {
+          return {
+            isValid: false,
+            formatted: "",
+            error: "Malaysian phone number should be 9-11 digits after country code (+60)",
+          }
         }
       }
-    }
 
-    // Check if it's just the number without country code or leading 0
-    if (cleanPhone.length >= 8 && cleanPhone.length <= 10) {
-      return { isValid: true, formatted: `+60${cleanPhone}` }
-    }
+      if (cleanPhone.startsWith("0")) {
+        const withoutZero = cleanPhone.substring(1)
+        if (withoutZero.length >= 8 && withoutZero.length <= 10) {
+          return { isValid: true, formatted: `+60${withoutZero}` }
+        } else {
+          return {
+            isValid: false,
+            formatted: "",
+            error: "Malaysian phone number should be 8-10 digits after removing leading 0",
+          }
+        }
+      }
 
-    return {
-      isValid: false,
-      formatted: "",
-      error: "Please enter a valid Malaysian phone number (e.g., 0123456789, 60123456789, or 123456789)",
-    }
-  }
+      if (cleanPhone.length >= 8 && cleanPhone.length <= 10) {
+        return { isValid: true, formatted: `+60${cleanPhone}` }
+      }
 
-  const formatPhoneDisplay = (phone: string): string => {
+      return {
+        isValid: false,
+        formatted: "",
+        error: "Please enter a valid Malaysian phone number (e.g., 0123456789, 60123456789, or 123456789)",
+      }
+    },
+    [],
+  )
+
+  const formatPhoneDisplay = useCallback((phone: string): string => {
     const cleanPhone = phone.replace(/\D/g, "")
 
     if (cleanPhone.startsWith("60")) {
@@ -102,7 +104,7 @@ export default function LoginPage() {
     }
 
     return phone
-  }
+  }, [])
 
   const handleGoogleSignIn = async () => {
     if (isLoading) return
@@ -111,9 +113,7 @@ export default function LoginPage() {
     setErrorMessage("")
 
     try {
-      console.log("Initiating Google sign in...")
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -124,11 +124,7 @@ export default function LoginPage() {
         },
       })
 
-      if (error) {
-        throw error
-      }
-
-      console.log("OAuth redirect initiated")
+      if (error) throw error
     } catch (error: any) {
       console.error("Login error:", error)
       setErrorMessage(error.message || "Failed to sign in with Google")
@@ -149,8 +145,6 @@ export default function LoginPage() {
       if (!validation.isValid) {
         throw new Error(validation.error || "Invalid phone number format")
       }
-
-      console.log("Sending OTP to:", validation.formatted)
 
       const { error } = await supabase.auth.signInWithOtp({
         phone: validation.formatted,
@@ -188,20 +182,13 @@ export default function LoginPage() {
         throw new Error(validation.error || "Invalid phone number format")
       }
 
-      console.log("Verifying OTP for:", validation.formatted)
-
       const { error } = await supabase.auth.verifyOtp({
         phone: validation.formatted,
         token: otp,
         type: "sms",
       })
 
-      if (error) {
-        throw error
-      }
-
-      console.log("OTP verified successfully")
-      // The auth context will handle the redirect
+      if (error) throw error
     } catch (error: any) {
       console.error("OTP verification error:", error)
       setErrorMessage(error.message || "Failed to verify OTP")
@@ -217,22 +204,36 @@ export default function LoginPage() {
     setSuccessMessage("")
   }
 
-  // Show loading if auth is still initializing
-  if (authLoading) {
+  // Show minimal loading state while checking auth
+  if (authLoading && !hasCheckedAuth) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+        <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            <p className="text-sm text-gray-500">Loading...</p>
+          </div>
         </main>
         <Footer />
       </div>
     )
   }
 
-  // Don't render if user is already logged in (will redirect)
+  // Don't render login form if user is logged in
   if (user) {
-    return null
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -276,25 +277,34 @@ export default function LoginPage() {
                       disabled={isLoading}
                       className="w-full flex items-center justify-center gap-2 py-6"
                     >
-                      <svg className="h-5 w-5" viewBox="0 0 24 24">
-                        <path
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                          fill="#4285F4"
-                        />
-                        <path
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                          fill="#34A853"
-                        />
-                        <path
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                          fill="#FBBC05"
-                        />
-                        <path
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                          fill="#EA4335"
-                        />
-                      </svg>
-                      {isLoading ? "Signing in..." : "Sign in with Google"}
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Signing in...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="h-5 w-5" viewBox="0 0 24 24">
+                            <path
+                              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                              fill="#4285F4"
+                            />
+                            <path
+                              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                              fill="#34A853"
+                            />
+                            <path
+                              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                              fill="#FBBC05"
+                            />
+                            <path
+                              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                              fill="#EA4335"
+                            />
+                          </svg>
+                          Sign in with Google
+                        </>
+                      )}
                     </Button>
                   </TabsContent>
 
@@ -326,7 +336,14 @@ export default function LoginPage() {
                           disabled={isLoading || !phoneNumber}
                           className="w-full py-6"
                         >
-                          {isLoading ? "Sending OTP..." : "Send Verification Code"}
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Sending OTP...
+                            </>
+                          ) : (
+                            "Send Verification Code"
+                          )}
                         </Button>
                       </div>
                     ) : (
@@ -348,7 +365,14 @@ export default function LoginPage() {
                         </div>
                         <div className="space-y-2">
                           <Button onClick={handleOtpVerification} disabled={isLoading || !otp} className="w-full py-6">
-                            {isLoading ? "Verifying..." : "Verify Code"}
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                Verifying...
+                              </>
+                            ) : (
+                              "Verify Code"
+                            )}
                           </Button>
                           <Button
                             onClick={resetPhoneAuth}
