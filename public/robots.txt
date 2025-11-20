@@ -1,0 +1,14 @@
+# Allow all bots to crawl the site
+User-agent: *
+Allow: /
+
+# Disallow dashboard and private pages
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /auth/
+
+# Sitemap location
+Sitemap: https://www.bookswap.pro/sitemap.xml
+
+# Crawl-delay for politeness
+Crawl-delay: 1

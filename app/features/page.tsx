@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import type { Metadata } from "next"
 import {
   ShoppingCart,
   RefreshCw,
@@ -19,6 +20,27 @@ import {
   CheckCircle2,
   ArrowRight,
 } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Features - Book Swap, Buy, Sell & Donate Platform | BookSwap Malaysia",
+  description:
+    "Discover BookSwap features: buy and sell books, swap books with readers, manage wishlists, secure transactions, and more. Everything you need for book trading in Malaysia!",
+  keywords: [
+    "book swap features",
+    "book exchange platform",
+    "book marketplace features",
+    "sell books online",
+    "buy used books",
+  ],
+  openGraph: {
+    title: "BookSwap Features - Complete Book Trading Platform",
+    description: "Explore powerful features for buying, selling, swapping and donating books online in Malaysia.",
+    url: "https://www.bookswap.pro/features",
+  },
+  alternates: {
+    canonical: "https://www.bookswap.pro/features",
+  },
+}
 
 export default function FeaturesPage() {
   const features = [
