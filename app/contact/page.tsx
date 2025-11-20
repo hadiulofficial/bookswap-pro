@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { MapPin, Phone, Mail, Clock, Send, CheckCircle2, Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
+import { MessageCircle, Clock, Send, CheckCircle2, Facebook, Twitter, Instagram, Linkedin } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -156,50 +156,22 @@ export default function ContactPage() {
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
                       <div className="rounded-full bg-emerald-100 p-3 dark:bg-emerald-800/30">
-                        <MapPin className="h-5 w-5 text-emerald-600" />
+                        <MessageCircle className="h-5 w-5 text-emerald-600" />
                       </div>
                       <div>
-                        <h3 className="font-medium">Our Location</h3>
+                        <h3 className="font-medium">Contact via Telegram</h3>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          123 Book Street, Reading
-                          <br />
-                          CA 94000, United States
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="rounded-full bg-emerald-100 p-3 dark:bg-emerald-800/30">
-                        <Phone className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">Phone Number</h3>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          <a href="tel:+15551234567" className="hover:text-emerald-600 transition-colors">
-                            +1 (555) 123-4567
+                          <a
+                            href="https://t.me/+447476933400"
+                            className="hover:text-emerald-600 transition-colors"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            +44 7476 933400
                           </a>
                         </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="rounded-full bg-emerald-100 p-3 dark:bg-emerald-800/30">
-                        <Mail className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">Email Address</h3>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          <a href="mailto:info@bookswap.com" className="hover:text-emerald-600 transition-colors">
-                            info@bookswap.com
-                          </a>
+                        <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                          Click to chat with us on Telegram
                         </p>
                       </div>
                     </div>
@@ -213,13 +185,11 @@ export default function ContactPage() {
                         <Clock className="h-5 w-5 text-emerald-600" />
                       </div>
                       <div>
-                        <h3 className="font-medium">Business Hours</h3>
+                        <h3 className="font-medium">Response Time</h3>
                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                          Monday - Friday: 9:00 AM - 6:00 PM
+                          We typically respond within 24 hours
                           <br />
-                          Saturday: 10:00 AM - 4:00 PM
-                          <br />
-                          Sunday: Closed
+                          Monday - Sunday
                         </p>
                       </div>
                     </div>
@@ -268,16 +238,8 @@ export default function ContactPage() {
         <section className="py-12 bg-white dark:bg-gray-950">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-center justify-center space-y-4 text-center mb-8">
-              <h2 className="text-2xl font-bold tracking-tighter sm:text-3xl">Find Us</h2>
-              <p className="text-gray-500 dark:text-gray-400">
-                Visit our office or drop by for a coffee and a book swap.
-              </p>
-            </div>
-            <div className="rounded-xl overflow-hidden shadow-md h-[400px] bg-gray-200 dark:bg-gray-800 relative">
-              {/* This would be replaced with an actual map component in production */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-gray-500 dark:text-gray-400">Interactive map would be displayed here</p>
-              </div>
+              <h2 className="text-2xl font-bold tracking-tighter sm:text-3xl">We're Here to Help</h2>
+              <p className="text-gray-500 dark:text-gray-400">Reach out via Telegram for the fastest response.</p>
             </div>
           </div>
         </section>

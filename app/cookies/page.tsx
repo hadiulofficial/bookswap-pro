@@ -158,11 +158,10 @@ export default function CookiesPage() {
               <h2>7. Where Can You Get Further Information?</h2>
               <p>If you have any questions about our use of cookies or other technologies, please contact us at:</p>
               <p>
-                Email: <a href="mailto:privacy@bookswap.com">privacy@bookswap.com</a>
-                <br />
-                Address: 123 Book Street, Reading, CA 94000
-                <br />
-                Phone: (555) 123-4567
+                Telegram:{" "}
+                <a href="https://t.me/+447476933400" target="_blank" rel="noopener noreferrer">
+                  +44 7476 933400
+                </a>
               </p>
             </div>
           </div>
