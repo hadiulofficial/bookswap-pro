@@ -37,9 +37,23 @@ export default function ContactPage() {
     setIsSubmitting(true)
     setError("")
 
-    // Simulate form submission
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const telegramMessage =
+        `📬 New Contact Form Submission\n\n` +
+        `👤 Name: ${formState.name}\n` +
+        `📧 Email: ${formState.email}\n` +
+        `📝 Subject: ${formState.subject}\n\n` +
+        `💬 Message:\n${formState.message}`
+
+      const encodedMessage = encodeURIComponent(telegramMessage)
+      const telegramUrl = `https://t.me/+447476933400?text=${encodedMessage}`
+
+      // Open Telegram in new window
+      window.open(telegramUrl, "_blank")
+
+      // Simulate brief delay for better UX
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
       setIsSubmitted(true)
       setFormState({
         name: "",
@@ -47,8 +61,13 @@ export default function ContactPage() {
         subject: "",
         message: "",
       })
+
+      // Reset success message after 5 seconds
+      setTimeout(() => {
+        setIsSubmitted(false)
+      }, 5000)
     } catch (err) {
-      setError("There was an error submitting your message. Please try again.")
+      setError("There was an error opening Telegram. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
